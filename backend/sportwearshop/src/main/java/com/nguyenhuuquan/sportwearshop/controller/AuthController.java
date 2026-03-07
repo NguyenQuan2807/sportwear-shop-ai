@@ -3,6 +3,7 @@ package com.nguyenhuuquan.sportwearshop.controller;
 import com.nguyenhuuquan.sportwearshop.dto.auth.AuthResponse;
 import com.nguyenhuuquan.sportwearshop.dto.auth.LoginRequest;
 import com.nguyenhuuquan.sportwearshop.dto.auth.RegisterRequest;
+import com.nguyenhuuquan.sportwearshop.dto.auth.UserResponse;
 import com.nguyenhuuquan.sportwearshop.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -26,5 +27,11 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @GetMapping("/me")
+    public UserResponse getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        String email = authentication.getName();
+        return authService.getCurrentUser(email);
     }
 }

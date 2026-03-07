@@ -9,6 +9,7 @@ import com.nguyenhuuquan.sportwearshop.entity.Role;
 import com.nguyenhuuquan.sportwearshop.entity.User;
 import com.nguyenhuuquan.sportwearshop.repository.RoleRepository;
 import com.nguyenhuuquan.sportwearshop.repository.UserRepository;
+import com.nguyenhuuquan.sportwearshop.security.JwtService;
 import com.nguyenhuuquan.sportwearshop.service.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,16 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthServiceImpl(UserRepository userRepository,
                            RoleRepository roleRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           JwtService jwtService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -50,6 +54,8 @@ public class AuthServiceImpl implements AuthService {
         AuthResponse response = new AuthResponse();
         response.setMessage("Đăng ký thành công");
         response.setUser(mapToUserResponse(savedUser));
+        String token = jwtService.generateToken(savedUser.getEmail());
+        response.setToken(token);
 
         return response;
     }
@@ -66,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
 
         AuthResponse response = new AuthResponse();
         response.setMessage("Đăng nhập thành công");
+        response.setToken(jwtService.generateToken(user.getEmail()));
         response.setUser(mapToUserResponse(user));
 
         return response;
@@ -80,5 +87,13 @@ public class AuthServiceImpl implements AuthService {
         response.setAddress(user.getAddress());
         response.setRoleName(user.getRole().getName().name());
         return response;
+    }
+
+    @Override
+    public UserResponse getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
+        return mapToUserResponse(user);
     }
 }

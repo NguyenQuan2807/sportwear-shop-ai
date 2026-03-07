@@ -19,3 +19,7 @@ spring:
 
 server:
   port: 8080
+
+jwt:
+  secret: mySuperSecretKeyForJwtToken12345678901234567890
+  expiration: 86400000
