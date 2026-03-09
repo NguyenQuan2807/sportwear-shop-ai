@@ -9,6 +9,7 @@ import ProductDetailPage from "./pages/shop/ProductDetailPage";
 import CartPage from "./pages/shop/CartPage";
 import CheckoutPage from "./pages/shop/CheckoutPage";
 import OrderHistoryPage from "./pages/shop/OrderHistoryPage";
+import OrderDetailPage from "./pages/shop/OrderDetailPage";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -47,6 +48,14 @@ function App() {
           element={
             <ProtectedRoute>
               <OrderHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute>
+              <OrderDetailPage />
             </ProtectedRoute>
           }
         />
