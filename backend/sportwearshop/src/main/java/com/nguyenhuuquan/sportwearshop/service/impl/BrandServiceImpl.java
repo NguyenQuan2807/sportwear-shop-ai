@@ -1,0 +1,90 @@
+package com.nguyenhuuquan.sportwearshop.service.impl;
+
+import com.nguyenhuuquan.sportwearshop.dto.brand.BrandResponse;
+import com.nguyenhuuquan.sportwearshop.dto.brand.CreateBrandRequest;
+import com.nguyenhuuquan.sportwearshop.dto.brand.UpdateBrandRequest;
+import com.nguyenhuuquan.sportwearshop.entity.Brand;
+import com.nguyenhuuquan.sportwearshop.repository.BrandRepository;
+import com.nguyenhuuquan.sportwearshop.service.BrandService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class BrandServiceImpl implements BrandService {
+
+    private final BrandRepository brandRepository;
+
+    public BrandServiceImpl(BrandRepository brandRepository) {
+        this.brandRepository = brandRepository;
+    }
+
+    @Override
+    public List<BrandResponse> getAllBrands() {
+        return brandRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public BrandResponse getBrandById(Long id) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+
+        return mapToResponse(brand);
+    }
+
+    @Override
+    public BrandResponse createBrand(CreateBrandRequest request) {
+        if (brandRepository.existsByName(request.getName())) {
+            throw new RuntimeException("Tên thương hiệu đã tồn tại");
+        }
+        if (brandRepository.existsBySlug(request.getSlug())) {
+            throw new RuntimeException("Slug đã tồn tại");
+        }
+
+        Brand brand = new Brand();
+        brand.setName(request.getName());
+        brand.setSlug(request.getSlug());
+        brand.setDescription(request.getDescription());
+        brand.setLogoUrl(request.getLogoUrl());
+        brand.setIsActive(true);
+
+        return mapToResponse(brandRepository.save(brand));
+    }
+
+    @Override
+    public BrandResponse updateBrand(Long id, UpdateBrandRequest request) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+
+        brand.setName(request.getName());
+        brand.setSlug(request.getSlug());
+        brand.setDescription(request.getDescription());
+        brand.setLogoUrl(request.getLogoUrl());
+        brand.setIsActive(request.getIsActive());
+
+        return mapToResponse(brandRepository.save(brand));
+    }
+
+    @Override
+    public void deleteBrand(Long id) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+
+        brandRepository.delete(brand);
+    }
+
+    private BrandResponse mapToResponse(Brand brand) {
+        BrandResponse response = new BrandResponse();
+        response.setId(brand.getId());
+        response.setName(brand.getName());
+        response.setSlug(brand.getSlug());
+        response.setDescription(brand.getDescription());
+        response.setLogoUrl(brand.getLogoUrl());
+        response.setIsActive(brand.getIsActive());
+        return response;
+    }
+}
