@@ -1,5 +1,7 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductVariantResponse;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.CreateProductVariantRequest;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductVariantRequest;
@@ -36,10 +38,10 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
     @Override
     public AdminProductVariantResponse createVariant(Long productId, CreateProductVariantRequest request) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
         if (productVariantRepository.existsBySku(request.getSku())) {
-            throw new RuntimeException("SKU đã tồn tại");
+            throw new BadRequestException("SKU đã tồn tại");
         }
 
         ProductVariant variant = new ProductVariant();
@@ -56,7 +58,7 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
     @Override
     public AdminProductVariantResponse updateVariant(Long variantId, UpdateProductVariantRequest request) {
         ProductVariant variant = productVariantRepository.findById(variantId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy biến thể"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể"));
 
         variant.setSize(request.getSize());
         variant.setColor(request.getColor());
@@ -70,7 +72,7 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
     @Override
     public void deleteVariant(Long variantId) {
         ProductVariant variant = productVariantRepository.findById(variantId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy biến thể"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể"));
 
         productVariantRepository.delete(variant);
     }

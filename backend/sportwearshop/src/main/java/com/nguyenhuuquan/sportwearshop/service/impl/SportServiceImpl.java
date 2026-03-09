@@ -1,5 +1,7 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.sport.CreateSportRequest;
 import com.nguyenhuuquan.sportwearshop.dto.sport.SportResponse;
 import com.nguyenhuuquan.sportwearshop.dto.sport.UpdateSportRequest;
@@ -31,7 +33,7 @@ public class SportServiceImpl implements SportService {
     @Override
     public SportResponse getSportById(Long id) {
         Sport sport = sportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy môn thể thao"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
 
         return mapToResponse(sport);
     }
@@ -39,10 +41,10 @@ public class SportServiceImpl implements SportService {
     @Override
     public SportResponse createSport(CreateSportRequest request) {
         if (sportRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Tên môn thể thao đã tồn tại");
+            throw new BadRequestException("Tên môn thể thao đã tồn tại");
         }
         if (sportRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException("Slug đã tồn tại");
+            throw new BadRequestException("Slug đã tồn tại");
         }
 
         Sport sport = new Sport();
@@ -58,7 +60,7 @@ public class SportServiceImpl implements SportService {
     @Override
     public SportResponse updateSport(Long id, UpdateSportRequest request) {
         Sport sport = sportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy môn thể thao"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
 
         sport.setName(request.getName());
         sport.setSlug(request.getSlug());
@@ -72,7 +74,7 @@ public class SportServiceImpl implements SportService {
     @Override
     public void deleteSport(Long id) {
         Sport sport = sportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy môn thể thao"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
 
         sportRepository.delete(sport);
     }

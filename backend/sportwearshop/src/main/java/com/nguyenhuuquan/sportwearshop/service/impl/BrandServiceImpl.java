@@ -1,5 +1,7 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.brand.BrandResponse;
 import com.nguyenhuuquan.sportwearshop.dto.brand.CreateBrandRequest;
 import com.nguyenhuuquan.sportwearshop.dto.brand.UpdateBrandRequest;
@@ -31,7 +33,7 @@ public class BrandServiceImpl implements BrandService {
     @Override
     public BrandResponse getBrandById(Long id) {
         Brand brand = brandRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
 
         return mapToResponse(brand);
     }
@@ -39,10 +41,10 @@ public class BrandServiceImpl implements BrandService {
     @Override
     public BrandResponse createBrand(CreateBrandRequest request) {
         if (brandRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Tên thương hiệu đã tồn tại");
+            throw new BadRequestException("Tên thương hiệu đã tồn tại");
         }
         if (brandRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException("Slug đã tồn tại");
+            throw new BadRequestException("Slug đã tồn tại");
         }
 
         Brand brand = new Brand();
@@ -58,7 +60,7 @@ public class BrandServiceImpl implements BrandService {
     @Override
     public BrandResponse updateBrand(Long id, UpdateBrandRequest request) {
         Brand brand = brandRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
 
         brand.setName(request.getName());
         brand.setSlug(request.getSlug());
@@ -72,7 +74,7 @@ public class BrandServiceImpl implements BrandService {
     @Override
     public void deleteBrand(Long id) {
         Brand brand = brandRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
 
         brandRepository.delete(brand);
     }

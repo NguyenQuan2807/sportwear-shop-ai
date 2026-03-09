@@ -1,5 +1,8 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
+import com.nguyenhuuquan.sportwearshop.common.exception.UnauthorizedException;
 import com.nguyenhuuquan.sportwearshop.dto.cart.AddToCartRequest;
 import com.nguyenhuuquan.sportwearshop.dto.cart.CartItemResponse;
 import com.nguyenhuuquan.sportwearshop.dto.cart.CartResponse;
@@ -49,10 +52,10 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCart(user);
 
         ProductVariant productVariant = productVariantRepository.findById(request.getProductVariantId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy biến thể sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể sản phẩm"));
 
         if (request.getQuantity() > productVariant.getStockQuantity()) {
-            throw new RuntimeException("Số lượng vượt quá tồn kho");
+            throw new BadRequestException("Số lượng vượt quá tồn kho");
         }
 
         CartItem cartItem = cartItemRepository.findByCartAndProductVariant(cart, productVariant)
@@ -66,7 +69,7 @@ public class CartServiceImpl implements CartService {
 
         int newQuantity = cartItem.getQuantity() + request.getQuantity();
         if (newQuantity > productVariant.getStockQuantity()) {
-            throw new RuntimeException("Tổng số lượng trong giỏ vượt quá tồn kho");
+            throw new BadRequestException("Tổng số lượng trong giỏ vượt quá tồn kho");
         }
 
         cartItem.setQuantity(newQuantity);
@@ -81,14 +84,14 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCart(user);
 
         CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy cart item"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cart item"));
 
         if (!cartItem.getCart().getId().equals(cart.getId())) {
-            throw new RuntimeException("Bạn không có quyền cập nhật cart item này");
+            throw new UnauthorizedException("Bạn không có quyền cập nhật cart item này");
         }
 
         if (request.getQuantity() > cartItem.getProductVariant().getStockQuantity()) {
-            throw new RuntimeException("Số lượng vượt quá tồn kho");
+            throw new BadRequestException("Số lượng vượt quá tồn kho");
         }
 
         cartItem.setQuantity(request.getQuantity());
@@ -103,10 +106,10 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCart(user);
 
         CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy cart item"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy cart item"));
 
         if (!cartItem.getCart().getId().equals(cart.getId())) {
-            throw new RuntimeException("Bạn không có quyền xóa cart item này");
+            throw new UnauthorizedException("Bạn không có quyền xóa cart item này");
         }
 
         cartItemRepository.delete(cartItem);
@@ -114,7 +117,7 @@ public class CartServiceImpl implements CartService {
 
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
     }
 
     private Cart getOrCreateCart(User user) {

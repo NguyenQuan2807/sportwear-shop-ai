@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductDetailResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductImageResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductResponse;
@@ -41,7 +42,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductDetailResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
         List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
         List<ProductImage> images = productImageRepository.findByProductId(product.getId());

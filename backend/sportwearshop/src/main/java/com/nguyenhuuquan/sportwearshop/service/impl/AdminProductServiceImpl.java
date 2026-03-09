@@ -1,5 +1,7 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductResponse;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.CreateProductRequest;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductRequest;
@@ -46,7 +48,7 @@ public class AdminProductServiceImpl implements AdminProductService {
     @Override
     public AdminProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
         return mapToResponse(product);
     }
@@ -54,17 +56,17 @@ public class AdminProductServiceImpl implements AdminProductService {
     @Override
     public AdminProductResponse createProduct(CreateProductRequest request) {
         if (productRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException("Slug sản phẩm đã tồn tại");
+            throw new BadRequestException("Slug sản phẩm đã tồn tại");
         }
 
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy category"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
 
         Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy brand"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
 
         Sport sport = sportRepository.findById(request.getSportId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sport"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
         Product product = new Product();
         product.setName(request.getName());
@@ -84,16 +86,16 @@ public class AdminProductServiceImpl implements AdminProductService {
     @Override
     public AdminProductResponse updateProduct(Long id, UpdateProductRequest request) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy category"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
 
         Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy brand"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
 
         Sport sport = sportRepository.findById(request.getSportId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sport"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
         product.setName(request.getName());
         product.setSlug(request.getSlug());
@@ -112,7 +114,7 @@ public class AdminProductServiceImpl implements AdminProductService {
     @Override
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
         productRepository.delete(product);
     }

@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
-
+    
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductImageResponse;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.CreateProductImageRequest;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductImageRequest;
@@ -36,7 +37,7 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
     @Override
     public AdminProductImageResponse createImage(Long productId, CreateProductImageRequest request) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
         ProductImage image = new ProductImage();
         image.setProduct(product);
@@ -50,7 +51,7 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
     @Override
     public AdminProductImageResponse updateImage(Long imageId, UpdateProductImageRequest request) {
         ProductImage image = productImageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ảnh sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ảnh sản phẩm"));
 
         image.setImageUrl(request.getImageUrl());
         image.setIsThumbnail(request.getIsThumbnail());
@@ -62,7 +63,7 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
     @Override
     public void deleteImage(Long imageId) {
         ProductImage image = productImageRepository.findById(imageId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ảnh sản phẩm"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ảnh sản phẩm"));
 
         productImageRepository.delete(image);
     }

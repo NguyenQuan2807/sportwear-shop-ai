@@ -2,6 +2,9 @@ package com.nguyenhuuquan.sportwearshop.service.impl;
 
 import com.nguyenhuuquan.sportwearshop.common.enums.OrderStatus;
 import com.nguyenhuuquan.sportwearshop.common.enums.PaymentStatus;
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
+import com.nguyenhuuquan.sportwearshop.common.exception.UnauthorizedException;
 import com.nguyenhuuquan.sportwearshop.dto.order.*;
 import com.nguyenhuuquan.sportwearshop.entity.*;
 import com.nguyenhuuquan.sportwearshop.repository.*;
@@ -44,19 +47,19 @@ public class OrderServiceImpl implements OrderService {
     public OrderDetailResponse createOrder(String email, CreateOrderRequest request) {
         User user = getUserByEmail(email);
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Giỏ hàng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Giỏ hàng không tồn tại"));
 
         List<CartItem> cartItems = cartItemRepository.findByCart(cart);
 
         if (cartItems.isEmpty()) {
-            throw new RuntimeException("Giỏ hàng đang trống");
+            throw new BadRequestException("Giỏ hàng đang trống");
         }
 
         // Kiểm tra tồn kho
         for (CartItem cartItem : cartItems) {
             ProductVariant variant = cartItem.getProductVariant();
             if (cartItem.getQuantity() > variant.getStockQuantity()) {
-                throw new RuntimeException("Sản phẩm " + variant.getProduct().getName() + " không đủ tồn kho");
+                throw new BadRequestException("Sản phẩm " + variant.getProduct().getName() + " không đủ tồn kho");
             }
         }
 
@@ -114,10 +117,10 @@ public class OrderServiceImpl implements OrderService {
         User user = getUserByEmail(email);
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
 
         if (!order.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền xem đơn hàng này");
+            throw new UnauthorizedException("Bạn không có quyền xem đơn hàng này");
         }
 
         return mapToOrderDetailResponse(order);
@@ -132,7 +135,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderDetailResponse getOrderDetailForAdmin(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
 
         return mapToOrderDetailResponse(order);
     }
@@ -141,7 +144,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderDetailResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
 
         order.setStatus(request.getStatus());
         orderRepository.save(order);
@@ -151,7 +154,7 @@ public class OrderServiceImpl implements OrderService {
 
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

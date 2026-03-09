@@ -1,5 +1,7 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.category.CategoryResponse;
 import com.nguyenhuuquan.sportwearshop.dto.category.CreateCategoryRequest;
 import com.nguyenhuuquan.sportwearshop.dto.category.UpdateCategoryRequest;
@@ -31,7 +33,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
 
         return mapToResponse(category);
     }
@@ -39,10 +41,10 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse createCategory(CreateCategoryRequest request) {
         if (categoryRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Tên danh mục đã tồn tại");
+            throw new BadRequestException("Tên danh mục đã tồn tại");
         }
         if (categoryRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException("Slug đã tồn tại");
+            throw new BadRequestException("Slug đã tồn tại");
         }
 
         Category category = new Category();
@@ -57,7 +59,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse updateCategory(Long id, UpdateCategoryRequest request) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
 
         category.setName(request.getName());
         category.setSlug(request.getSlug());
@@ -70,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
 
         categoryRepository.delete(category);
     }

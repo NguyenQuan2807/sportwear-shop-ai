@@ -1,6 +1,9 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
 import com.nguyenhuuquan.sportwearshop.common.enums.RoleName;
+import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
+import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
+import com.nguyenhuuquan.sportwearshop.common.exception.UnauthorizedException;
 import com.nguyenhuuquan.sportwearshop.dto.auth.AuthResponse;
 import com.nguyenhuuquan.sportwearshop.dto.auth.LoginRequest;
 import com.nguyenhuuquan.sportwearshop.dto.auth.RegisterRequest;
@@ -35,11 +38,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại");
+            throw new BadRequestException("Email đã tồn tại");
         }
 
         Role userRole = roleRepository.findByName(RoleName.USER)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy role USER"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy role USER"));
 
         User user = new User();
         user.setFullName(request.getFullName());
@@ -63,11 +66,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email hoặc mật khẩu không đúng"));
+                .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không đúng"));
 
         boolean isPasswordMatch = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if (!isPasswordMatch) {
-            throw new RuntimeException("Email hoặc mật khẩu không đúng");
+            throw new UnauthorizedException("Email hoặc mật khẩu không đúng");
         }
 
         AuthResponse response = new AuthResponse();
@@ -92,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
 
         return mapToUserResponse(user);
     }
