@@ -132,6 +132,9 @@ public class AdminProductServiceImpl implements AdminProductService {
         response.setMaterial(product.getMaterial());
         response.setThumbnailUrl(product.getThumbnailUrl());
         response.setIsActive(product.getIsActive());
+        response.setCategoryId(product.getCategory().getId());
+        response.setBrandId(product.getBrand().getId());
+        response.setSportId(product.getSport().getId());
         return response;
     }
 }

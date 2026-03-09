@@ -17,4 +17,7 @@ public class AdminProductResponse {
     private String material;
     private String thumbnailUrl;
     private Boolean isActive;
+    private Long categoryId;
+    private Long brandId;
+    private Long sportId;
 }
