@@ -2,10 +2,7 @@ package com.nguyenhuuquan.sportwearshop.service.impl;
 
 import com.nguyenhuuquan.sportwearshop.common.enums.OrderStatus;
 import com.nguyenhuuquan.sportwearshop.common.enums.PaymentStatus;
-import com.nguyenhuuquan.sportwearshop.dto.order.CreateOrderRequest;
-import com.nguyenhuuquan.sportwearshop.dto.order.OrderDetailResponse;
-import com.nguyenhuuquan.sportwearshop.dto.order.OrderItemResponse;
-import com.nguyenhuuquan.sportwearshop.dto.order.OrderResponse;
+import com.nguyenhuuquan.sportwearshop.dto.order.*;
 import com.nguyenhuuquan.sportwearshop.entity.*;
 import com.nguyenhuuquan.sportwearshop.repository.*;
 import com.nguyenhuuquan.sportwearshop.service.OrderService;
@@ -122,6 +119,32 @@ public class OrderServiceImpl implements OrderService {
         if (!order.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Bạn không có quyền xem đơn hàng này");
         }
+
+        return mapToOrderDetailResponse(order);
+    }
+
+    @Override
+    public List<OrderResponse> getAllOrdersForAdmin() {
+        List<Order> orders = orderRepository.findAllByOrderByCreatedAtDesc();
+        return orders.stream().map(this::mapToOrderResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public OrderDetailResponse getOrderDetailForAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
+        return mapToOrderDetailResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderDetailResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
+        order.setStatus(request.getStatus());
+        orderRepository.save(order);
 
         return mapToOrderDetailResponse(order);
     }
