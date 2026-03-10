@@ -8,6 +8,7 @@ import {
 } from "../../services/adminProductService";
 import AdminProductForm from "../../components/product/AdminProductForm";
 import AdminProductVariantManager from "../../components/product/AdminProductVariantManager";
+import AdminProductImageManager from "../../components/product/AdminProductImageManager";
 
 const ManageProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -22,6 +23,10 @@ const ManageProductsPage = () => {
   const [variantProduct, setVariantProduct] = useState(null);
   const handleManageVariants = (product) => {
     setVariantProduct(product);
+  };
+  const [imageProduct, setImageProduct] = useState(null);
+  const handleManageImages = (product) => {
+    setImageProduct(product);
   };
 
   const fetchProducts = async () => {
@@ -222,6 +227,13 @@ const ManageProductsPage = () => {
                             </button>
 
                             <button
+                                onClick={() => handleManageImages(product)}
+                                className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                                Images
+                            </button>
+
+                            <button
                                 onClick={() => handleDelete(product.id)}
                                 className="rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
                             >
@@ -239,6 +251,10 @@ const ManageProductsPage = () => {
       <AdminProductVariantManager
         product={variantProduct}
         onClose={() => setVariantProduct(null)}
+      />
+      <AdminProductImageManager
+        product={imageProduct}
+        onClose={() => setImageProduct(null)}
       />
     </div>
   );
