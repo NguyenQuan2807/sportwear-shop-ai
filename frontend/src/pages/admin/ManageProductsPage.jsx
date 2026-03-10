@@ -7,6 +7,7 @@ import {
   updateAdminProductApi,
 } from "../../services/adminProductService";
 import AdminProductForm from "../../components/product/AdminProductForm";
+import AdminProductVariantManager from "../../components/product/AdminProductVariantManager";
 
 const ManageProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -17,6 +18,11 @@ const ManageProductsPage = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  const [variantProduct, setVariantProduct] = useState(null);
+  const handleManageVariants = (product) => {
+    setVariantProduct(product);
+  };
 
   const fetchProducts = async () => {
     try {
@@ -200,20 +206,28 @@ const ManageProductsPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditClick(product.id)}
-                          className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
-                        >
-                          Xóa
-                        </button>
-                      </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => handleEditClick(product.id)}
+                                className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"
+                            >
+                                Sửa
+                            </button>
+
+                            <button
+                                onClick={() => handleManageVariants(product)}
+                                className="rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                            >
+                                Variants
+                            </button>
+
+                            <button
+                                onClick={() => handleDelete(product.id)}
+                                className="rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
+                            >
+                                Xóa
+                            </button>
+                        </div>
                     </td>
                   </tr>
                 ))}
@@ -222,6 +236,10 @@ const ManageProductsPage = () => {
           </div>
         )}
       </div>
+      <AdminProductVariantManager
+        product={variantProduct}
+        onClose={() => setVariantProduct(null)}
+      />
     </div>
   );
 };
