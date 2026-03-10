@@ -20,6 +20,8 @@ import ManageOrdersPage from "./pages/admin/ManageOrdersPage";
 import ManageCategoriesPage from "./pages/admin/ManageCategoriesPage";
 import ManageBrandsPage from "./pages/admin/ManageBrandsPage";
 
+import AdminRoute from "./routes/AdminRoute";
+
 function App() {
   return (
     <Routes>
@@ -64,7 +66,14 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ManageProductsPage />} />
         <Route path="orders" element={<ManageOrdersPage />} />
