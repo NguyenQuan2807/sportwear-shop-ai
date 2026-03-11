@@ -21,6 +21,18 @@ public class OrderItem extends BaseEntity {
     @Column(nullable = false)
     private Integer quantity;
 
+    @Column(name = "original_price", nullable = false)
+    private Double originalPrice;
+
+    @Column(name = "discount_amount", nullable = false)
+    private Double discountAmount = 0.0;
+
+    @Column(name = "final_price", nullable = false)
+    private Double finalPrice;
+
     @Column(nullable = false)
     private Double price;
+
+    @Column(name = "promotion_name")
+    private String promotionName;
 }

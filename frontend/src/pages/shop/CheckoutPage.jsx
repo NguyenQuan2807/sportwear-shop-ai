@@ -272,6 +272,16 @@ const CheckoutPage = () => {
             <span>{items.length}</span>
           </div>
 
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <span>Tạm tính</span>
+            <span>{formatCurrency(totalAmount)}</span>
+          </div>
+
+          <div className="rounded-xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+            Giá cuối cùng sẽ được hệ thống tính theo chương trình khuyến mãi đang áp dụng
+            tại thời điểm đặt hàng.
+          </div>
+
           <div className="flex items-center justify-between text-lg font-bold text-slate-800">
             <span>Tổng cộng</span>
             <span className="text-blue-600">{formatCurrency(totalAmount)}</span>

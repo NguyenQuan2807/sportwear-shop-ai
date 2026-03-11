@@ -13,7 +13,12 @@ public class OrderItemResponse {
     private String thumbnailUrl;
     private String size;
     private String color;
+
+    private Double originalPrice;
+    private Double discountAmount;
+    private Double finalPrice;
     private Double price;
     private Integer quantity;
     private Double totalPrice;
+    private String promotionName;
 }

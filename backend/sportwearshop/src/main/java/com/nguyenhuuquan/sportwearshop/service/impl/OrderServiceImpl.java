@@ -11,6 +11,8 @@ import com.nguyenhuuquan.sportwearshop.repository.*;
 import com.nguyenhuuquan.sportwearshop.service.OrderService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
+import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final PromotionPricingService promotionPricingService;
 
     public OrderServiceImpl(UserRepository userRepository,
                             CartRepository cartRepository,
@@ -32,7 +35,8 @@ public class OrderServiceImpl implements OrderService {
                             OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
                             PaymentRepository paymentRepository,
-                            ProductVariantRepository productVariantRepository) {
+                            ProductVariantRepository productVariantRepository,
+                            PromotionPricingService promotionPricingService) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
@@ -40,6 +44,7 @@ public class OrderServiceImpl implements OrderService {
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.productVariantRepository = productVariantRepository;
+        this.promotionPricingService = promotionPricingService;
     }
 
     @Override
@@ -55,7 +60,6 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Giỏ hàng đang trống");
         }
 
-        // Kiểm tra tồn kho
         for (CartItem cartItem : cartItems) {
             ProductVariant variant = cartItem.getProductVariant();
             if (cartItem.getQuantity() > variant.getStockQuantity()) {
@@ -63,12 +67,35 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        double totalAmount = cartItems.stream()
-                .mapToDouble(item -> item.getProductVariant().getPrice() * item.getQuantity())
-                .sum();
+        double subTotalAmount = 0.0;
+        double discountAmount = 0.0;
+        double totalAmount = 0.0;
+
+        for (CartItem cartItem : cartItems) {
+            ProductVariant variant = cartItem.getProductVariant();
+            VariantPricingResponse pricing = promotionPricingService.calculateVariantPricing(variant);
+
+            double originalPrice = pricing.getOriginalPrice() != null
+                    ? pricing.getOriginalPrice()
+                    : variant.getPrice();
+
+            double finalPrice = pricing.getFinalPrice() != null
+                    ? pricing.getFinalPrice()
+                    : variant.getPrice();
+
+            double itemDiscountAmount = pricing.getDiscountAmount() != null
+                    ? pricing.getDiscountAmount()
+                    : 0.0;
+
+            subTotalAmount += originalPrice * cartItem.getQuantity();
+            discountAmount += itemDiscountAmount * cartItem.getQuantity();
+            totalAmount += finalPrice * cartItem.getQuantity();
+        }
 
         Order order = new Order();
         order.setUser(user);
+        order.setSubTotalAmount(subTotalAmount);
+        order.setDiscountAmount(discountAmount);
         order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentMethod(request.getPaymentMethod());
@@ -81,12 +108,34 @@ public class OrderServiceImpl implements OrderService {
 
         for (CartItem cartItem : cartItems) {
             ProductVariant variant = cartItem.getProductVariant();
+            VariantPricingResponse pricing = promotionPricingService.calculateVariantPricing(variant);
+
+            double originalPrice = pricing.getOriginalPrice() != null
+                    ? pricing.getOriginalPrice()
+                    : variant.getPrice();
+
+            double finalPrice = pricing.getFinalPrice() != null
+                    ? pricing.getFinalPrice()
+                    : variant.getPrice();
+
+            double itemDiscountAmount = pricing.getDiscountAmount() != null
+                    ? pricing.getDiscountAmount()
+                    : 0.0;
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(savedOrder);
             orderItem.setProductVariant(variant);
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPrice(variant.getPrice());
+            orderItem.setOriginalPrice(originalPrice);
+            orderItem.setDiscountAmount(itemDiscountAmount);
+            orderItem.setFinalPrice(finalPrice);
+            orderItem.setPrice(finalPrice);
+            orderItem.setPromotionName(
+                    pricing.getAppliedPromotion() != null
+                            ? pricing.getAppliedPromotion().getPromotionName()
+                            : null
+            );
+
             orderItemRepository.save(orderItem);
 
             variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
@@ -186,7 +235,11 @@ public class OrderServiceImpl implements OrderService {
             response.setColor(variant.getColor());
             response.setPrice(item.getPrice());
             response.setQuantity(item.getQuantity());
-            response.setTotalPrice(item.getPrice() * item.getQuantity());
+            response.setTotalPrice(item.getFinalPrice() * item.getQuantity());
+            response.setOriginalPrice(item.getOriginalPrice());
+            response.setDiscountAmount(item.getDiscountAmount());
+            response.setFinalPrice(item.getFinalPrice());
+            response.setPromotionName(item.getPromotionName());
             return response;
         }).collect(Collectors.toList());
 

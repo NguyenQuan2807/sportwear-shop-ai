@@ -16,6 +16,12 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "sub_total_amount", nullable = false)
+    private Double subTotalAmount;
+
+    @Column(name = "discount_amount", nullable = false)
+    private Double discountAmount = 0.0;
+
     @Column(name = "total_amount", nullable = false)
     private Double totalAmount;
 

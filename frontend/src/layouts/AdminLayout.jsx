@@ -12,6 +12,7 @@ const AdminLayout = () => {
             <Link to="/admin/orders">Orders</Link>
             <Link to="/admin/categories">Categories</Link>
             <Link to="/admin/brands">Brands</Link>
+            <Link to="/admin/sports">Sports</Link>
           </nav>
         </aside>
 

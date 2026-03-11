@@ -107,6 +107,31 @@ const ProductDetailPage = () => {
     }
   };
 
+  const renderSelectedVariantPrice = () => {
+    if (!selectedVariant) return null;
+
+    const hasPromotion = Boolean(selectedVariant.onPromotion);
+
+    if (!hasPromotion) {
+      return (
+        <p className="text-2xl font-bold text-blue-600">
+          {formatCurrency(selectedVariant.price)}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-1">
+        <p className="text-base text-slate-400 line-through">
+          {formatCurrency(selectedVariant.originalPrice)}
+        </p>
+        <p className="text-3xl font-bold text-red-600">
+          {formatCurrency(selectedVariant.finalPrice)}
+        </p>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="rounded-xl bg-white p-6 shadow">
@@ -154,7 +179,7 @@ const ProductDetailPage = () => {
               <span>Gender: {product.gender}</span>
             </div>
 
-            <div>
+            <div className="flex flex-wrap gap-2">
               <span
                 className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
                   product.isActive
@@ -164,8 +189,34 @@ const ProductDetailPage = () => {
               >
                 {product.isActive ? "Đang bán" : "Ngừng bán"}
               </span>
+
+              {selectedVariant?.onPromotion && (
+                <span className="inline-block rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white">
+                  Giảm {selectedVariant.discountPercent || 0}%
+                </span>
+              )}
+
+              {selectedVariant?.flashSale && (
+                <span className="inline-block rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white">
+                  Flash Sale
+                </span>
+              )}
             </div>
           </div>
+
+          {selectedVariant?.appliedPromotion?.promotionName && (
+            <div className="rounded-2xl border border-red-100 bg-gradient-to-r from-red-50 to-orange-50 p-4 shadow-sm">
+              <p className="text-sm font-medium text-slate-500">
+                Chương trình đang áp dụng
+              </p>
+              <h3 className="mt-1 text-lg font-bold text-red-600">
+                {selectedVariant.appliedPromotion.promotionName}
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Ưu đãi đang được áp dụng cho biến thể bạn chọn.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-xl bg-white p-5 shadow">
             <h2 className="mb-2 text-lg font-semibold text-slate-800">
@@ -193,12 +244,17 @@ const ProductDetailPage = () => {
 
           {selectedVariant && (
             <div className="rounded-xl bg-white p-5 shadow">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-slate-500">Giá đang chọn</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(selectedVariant.price)}
-                  </p>
+                  {renderSelectedVariantPrice()}
+
+                  {selectedVariant.onPromotion && (
+                    <p className="mt-2 text-sm font-medium text-red-600">
+                      Bạn tiết kiệm{" "}
+                      {formatCurrency(selectedVariant.discountAmount || 0)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="text-right text-sm text-slate-500">

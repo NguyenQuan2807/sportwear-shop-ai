@@ -17,4 +17,16 @@ public class ProductResponse {
     private String material;
     private String thumbnailUrl;
     private Boolean isActive;
+
+    private Double minPrice;
+    private Double maxPrice;
+    private Boolean inStock;
+
+    private Double originalMinPrice;
+    private Double originalMaxPrice;
+    private Double saleMinPrice;
+    private Double saleMaxPrice;
+    private Integer maxDiscountPercent;
+    private Boolean onPromotion;
+    private Boolean flashSale;
 }

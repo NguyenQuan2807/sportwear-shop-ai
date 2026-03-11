@@ -16,4 +16,5 @@ public class CreateSportRequest {
 
     private String description;
     private String iconUrl;
+    private Boolean isActive = true;
 }
