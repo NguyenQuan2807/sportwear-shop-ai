@@ -20,6 +20,7 @@ import ManageOrdersPage from "./pages/admin/ManageOrdersPage";
 import ManageCategoriesPage from "./pages/admin/ManageCategoriesPage";
 import ManageBrandsPage from "./pages/admin/ManageBrandsPage";
 import ManageSportsPage from "./pages/admin/ManageSportsPage";
+import ManagePromotionsPage from "./pages/admin/ManagePromotionsPage";
 
 import AdminRoute from "./routes/AdminRoute";
 
@@ -81,6 +82,7 @@ function App() {
         <Route path="categories" element={<ManageCategoriesPage />} />
         <Route path="brands" element={<ManageBrandsPage />} />
         <Route path="sports" element={<ManageSportsPage />} />
+        <Route path="promotions" element={<ManagePromotionsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />

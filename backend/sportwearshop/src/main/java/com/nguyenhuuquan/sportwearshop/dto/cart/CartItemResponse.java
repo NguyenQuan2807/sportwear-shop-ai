@@ -13,7 +13,16 @@ public class CartItemResponse {
     private String thumbnailUrl;
     private String size;
     private String color;
+
     private Double price;
+    private Double originalPrice;
+    private Double finalPrice;
+    private Double discountAmount;
+    private Boolean onPromotion;
+    private Boolean flashSale;
+    private String promotionName;
+
     private Integer quantity;
     private Double totalPrice;
+    private Integer stockQuantity;
 }

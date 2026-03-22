@@ -7,6 +7,7 @@ import com.nguyenhuuquan.sportwearshop.dto.cart.AddToCartRequest;
 import com.nguyenhuuquan.sportwearshop.dto.cart.CartItemResponse;
 import com.nguyenhuuquan.sportwearshop.dto.cart.CartResponse;
 import com.nguyenhuuquan.sportwearshop.dto.cart.UpdateCartItemRequest;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
 import com.nguyenhuuquan.sportwearshop.entity.Cart;
 import com.nguyenhuuquan.sportwearshop.entity.CartItem;
 import com.nguyenhuuquan.sportwearshop.entity.ProductVariant;
@@ -16,6 +17,7 @@ import com.nguyenhuuquan.sportwearshop.repository.CartRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductVariantRepository;
 import com.nguyenhuuquan.sportwearshop.repository.UserRepository;
 import com.nguyenhuuquan.sportwearshop.service.CartService;
+import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,15 +30,18 @@ public class CartServiceImpl implements CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final PromotionPricingService promotionPricingService;
 
     public CartServiceImpl(UserRepository userRepository,
                            CartRepository cartRepository,
                            CartItemRepository cartItemRepository,
-                           ProductVariantRepository productVariantRepository) {
+                           ProductVariantRepository productVariantRepository,
+                           PromotionPricingService promotionPricingService) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productVariantRepository = productVariantRepository;
+        this.promotionPricingService = promotionPricingService;
     }
 
     @Override
@@ -132,16 +137,28 @@ public class CartServiceImpl implements CartService {
     private CartResponse mapToCartResponse(Cart cart) {
         List<CartItem> cartItems = cartItemRepository.findByCart(cart);
 
-        List<CartItemResponse> itemResponses = cartItems.stream().map(this::mapToCartItemResponse).collect(Collectors.toList());
+        List<CartItemResponse> itemResponses = cartItems.stream()
+                .map(this::mapToCartItemResponse)
+                .collect(Collectors.toList());
+
+        double subTotalAmount = itemResponses.stream()
+                .mapToDouble(item -> (item.getOriginalPrice() != null ? item.getOriginalPrice() : 0.0) * item.getQuantity())
+                .sum();
+
+        double discountAmount = itemResponses.stream()
+                .mapToDouble(item -> (item.getDiscountAmount() != null ? item.getDiscountAmount() : 0.0) * item.getQuantity())
+                .sum();
 
         double totalAmount = itemResponses.stream()
-                .mapToDouble(CartItemResponse::getTotalPrice)
+                .mapToDouble(item -> item.getTotalPrice() != null ? item.getTotalPrice() : 0.0)
                 .sum();
 
         CartResponse response = new CartResponse();
         response.setCartId(cart.getId());
         response.setUserId(cart.getUser().getId());
         response.setItems(itemResponses);
+        response.setSubTotalAmount(subTotalAmount);
+        response.setDiscountAmount(discountAmount);
         response.setTotalAmount(totalAmount);
 
         return response;
@@ -149,6 +166,19 @@ public class CartServiceImpl implements CartService {
 
     private CartItemResponse mapToCartItemResponse(CartItem cartItem) {
         ProductVariant variant = cartItem.getProductVariant();
+        VariantPricingResponse pricing = promotionPricingService.calculateVariantPricing(variant);
+
+        double originalPrice = pricing.getOriginalPrice() != null
+                ? pricing.getOriginalPrice()
+                : variant.getPrice();
+
+        double finalPrice = pricing.getFinalPrice() != null
+                ? pricing.getFinalPrice()
+                : variant.getPrice();
+
+        double discountAmount = pricing.getDiscountAmount() != null
+                ? pricing.getDiscountAmount()
+                : 0.0;
 
         CartItemResponse response = new CartItemResponse();
         response.setId(cartItem.getId());
@@ -158,9 +188,22 @@ public class CartServiceImpl implements CartService {
         response.setThumbnailUrl(variant.getProduct().getThumbnailUrl());
         response.setSize(variant.getSize());
         response.setColor(variant.getColor());
-        response.setPrice(variant.getPrice());
+
+        response.setPrice(finalPrice);
+        response.setOriginalPrice(originalPrice);
+        response.setFinalPrice(finalPrice);
+        response.setDiscountAmount(discountAmount);
+        response.setOnPromotion(pricing.getOnPromotion());
+        response.setFlashSale(pricing.getFlashSale());
+        response.setPromotionName(
+                pricing.getAppliedPromotion() != null
+                        ? pricing.getAppliedPromotion().getPromotionName()
+                        : null
+        );
+
         response.setQuantity(cartItem.getQuantity());
-        response.setTotalPrice(variant.getPrice() * cartItem.getQuantity());
+        response.setTotalPrice(finalPrice * cartItem.getQuantity());
+        response.setStockQuantity(variant.getStockQuantity());
 
         return response;
     }

@@ -13,6 +13,7 @@ const AdminLayout = () => {
             <Link to="/admin/categories">Categories</Link>
             <Link to="/admin/brands">Brands</Link>
             <Link to="/admin/sports">Sports</Link>
+            <Link to="/admin/promotions">Promotions</Link>
           </nav>
         </aside>
 

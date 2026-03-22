@@ -7,81 +7,181 @@ const ProductVariantSelector = ({
 }) => {
   if (!variants.length) {
     return (
-      <div className="rounded-xl bg-slate-100 p-4 text-slate-500">
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
         Sản phẩm chưa có biến thể.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-slate-800">Chọn biến thể</h3>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
+            Variant Selection
+          </p>
+          <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
+            Chọn biến thể phù hợp
+          </h3>
+        </div>
+
+        <p className="text-sm text-slate-500">
+          Có <span className="font-semibold text-slate-900">{variants.length}</span>{" "}
+          biến thể khả dụng
+        </p>
+      </div>
 
       <div className="space-y-3">
         {variants.map((variant) => {
           const isSelected = selectedVariant?.id === variant.id;
           const hasPromotion = Boolean(variant.onPromotion);
           const isFlashSale = Boolean(variant.flashSale);
+          const outOfStock = Number(variant.stockQuantity || 0) <= 0;
 
           return (
             <button
               key={variant.id}
               type="button"
               onClick={() => onSelectVariant(variant)}
-              className={`w-full rounded-xl border p-4 text-left transition ${
+              className={`w-full rounded-[24px] border p-4 text-left transition duration-200 sm:p-5 ${
                 isSelected
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-slate-200 bg-white hover:border-blue-300"
+                  ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-200"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
               }`}
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-slate-800">
-                      Size: {variant.size} - Màu: {variant.color}
-                    </p>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
+                        isSelected
+                          ? "bg-white/15 text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      Size {variant.size}
+                    </span>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
+                        isSelected
+                          ? "bg-white/15 text-white"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {variant.color}
+                    </span>
 
                     {hasPromotion && (
-                      <span className="rounded-full bg-red-500 px-2 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow">
                         -{variant.discountPercent || 0}%
                       </span>
                     )}
 
                     {isFlashSale && (
-                      <span className="rounded-full bg-orange-500 px-2 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow">
                         Flash Sale
+                      </span>
+                    )}
+
+                    {outOfStock && (
+                      <span
+                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
+                          isSelected
+                            ? "bg-white/15 text-white"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        Hết hàng
                       </span>
                     )}
                   </div>
 
-                  <p className="text-sm text-slate-500">SKU: {variant.sku}</p>
+                  <div>
+                    <p
+                      className={`text-lg font-black tracking-tight ${
+                        isSelected ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Size: {variant.size} • Màu: {variant.color}
+                    </p>
+
+                    <p
+                      className={`mt-1 text-sm ${
+                        isSelected ? "text-white/70" : "text-slate-500"
+                      }`}
+                    >
+                      SKU: {variant.sku}
+                    </p>
+                  </div>
 
                   {variant.appliedPromotion?.promotionName && (
-                    <p className="text-sm font-medium text-red-600">
+                    <div
+                      className={`inline-flex max-w-full rounded-2xl px-3 py-2 text-sm font-semibold ${
+                        isSelected
+                          ? "bg-white/10 text-white"
+                          : "bg-red-50 text-red-500"
+                      }`}
+                    >
                       {variant.appliedPromotion.promotionName}
-                    </p>
+                    </div>
                   )}
                 </div>
 
-                <div className="space-y-1 text-right">
-                  {!hasPromotion ? (
-                    <p className="font-bold text-blue-600">
-                      {formatCurrency(variant.price)}
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-slate-400 line-through">
-                        {formatCurrency(variant.originalPrice)}
-                      </p>
-                      <p className="font-bold text-red-600">
-                        {formatCurrency(variant.finalPrice)}
-                      </p>
-                    </>
-                  )}
+                <div className="grid gap-3 sm:min-w-[220px]">
+                  <div className="rounded-[20px] border border-black/5 bg-black/5 p-4 backdrop-blur">
+                    {!hasPromotion ? (
+                      <>
+                        <p
+                          className={`text-xs font-bold uppercase tracking-[0.18em] ${
+                            isSelected ? "text-white/60" : "text-slate-400"
+                          }`}
+                        >
+                          Giá bán
+                        </p>
+                        <p
+                          className={`mt-2 text-2xl font-black tracking-tight ${
+                            isSelected ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          {formatCurrency(variant.price)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p
+                          className={`text-xs font-bold uppercase tracking-[0.18em] ${
+                            isSelected ? "text-white/60" : "text-slate-400"
+                          }`}
+                        >
+                          Giá ưu đãi
+                        </p>
+                        <p
+                          className={`mt-1 text-sm line-through ${
+                            isSelected ? "text-white/50" : "text-slate-400"
+                          }`}
+                        >
+                          {formatCurrency(variant.originalPrice)}
+                        </p>
+                        <p className="mt-1 text-2xl font-black tracking-tight text-red-400">
+                          {formatCurrency(variant.finalPrice)}
+                        </p>
+                      </>
+                    )}
+                  </div>
 
-                  <p className="text-sm text-slate-500">
-                    Tồn kho: {variant.stockQuantity}
-                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MiniStat
+                      isSelected={isSelected}
+                      label="Tồn kho"
+                      value={variant.stockQuantity ?? 0}
+                    />
+                    <MiniStat
+                      isSelected={isSelected}
+                      label="Trạng thái"
+                      value={outOfStock ? "Hết" : "Sẵn"}
+                    />
+                  </div>
                 </div>
               </div>
             </button>
@@ -91,5 +191,28 @@ const ProductVariantSelector = ({
     </div>
   );
 };
+
+const MiniStat = ({ label, value, isSelected }) => (
+  <div
+    className={`rounded-[18px] px-4 py-3 ${
+      isSelected ? "bg-white/10" : "bg-slate-50"
+    }`}
+  >
+    <p
+      className={`text-[11px] font-bold uppercase tracking-[0.18em] ${
+        isSelected ? "text-white/60" : "text-slate-400"
+      }`}
+    >
+      {label}
+    </p>
+    <p
+      className={`mt-1 text-sm font-bold ${
+        isSelected ? "text-white" : "text-slate-800"
+      }`}
+    >
+      {value}
+    </p>
+  </div>
+);
 
 export default ProductVariantSelector;

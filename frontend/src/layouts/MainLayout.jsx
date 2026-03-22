@@ -1,54 +1,17 @@
-import { Link, Outlet } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { Outlet } from "react-router-dom";
+import Header from "../components/layout/Header";
+import Footer from "../components/layout/Footer";
 
 const MainLayout = () => {
-  const { user, logout } = useAuth();
-
   return (
-    <div>
-      <header className="bg-white shadow">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className="text-xl font-bold text-blue-600">
-            Sportwear Shop
-          </Link>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <Header />
 
-          <nav className="flex items-center gap-4 text-sm">
-            <Link to="/products">Products</Link>
-            <Link to="/cart">Cart</Link>
-            <Link to="/orders">Orders</Link>
-
-            {user?.roleName === "ADMIN" && (
-              <Link
-                to="/admin"
-                className="rounded-md bg-slate-900 px-3 py-2 text-white hover:bg-slate-800"
-              >
-                Admin
-              </Link>
-            )}
-
-            {!user ? (
-              <>
-                <Link to="/login">Login</Link>
-                <Link to="/register">Register</Link>
-              </>
-            ) : (
-              <>
-                <span className="font-medium text-slate-700">{user.fullName}</span>
-                <button
-                  onClick={logout}
-                  className="rounded-md bg-red-500 px-3 py-2 text-white hover:bg-red-600"
-                >
-                  Logout
-                </button>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl p-6">
+      <main className="mx-auto min-h-[60vh] max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 };
