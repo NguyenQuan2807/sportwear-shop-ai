@@ -7,6 +7,7 @@ import com.nguyenhuuquan.sportwearshop.dto.sport.SportResponse;
 import com.nguyenhuuquan.sportwearshop.dto.sport.UpdateSportRequest;
 import com.nguyenhuuquan.sportwearshop.entity.Sport;
 import com.nguyenhuuquan.sportwearshop.repository.SportRepository;
+import com.nguyenhuuquan.sportwearshop.service.FileStorageService;
 import com.nguyenhuuquan.sportwearshop.service.SportService;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +18,11 @@ import java.util.stream.Collectors;
 public class SportServiceImpl implements SportService {
 
     private final SportRepository sportRepository;
+    private final FileStorageService fileStorageService;
 
-    public SportServiceImpl(SportRepository sportRepository) {
+    public SportServiceImpl(SportRepository sportRepository, FileStorageService fileStorageService) {
         this.sportRepository = sportRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -34,7 +37,6 @@ public class SportServiceImpl implements SportService {
     public SportResponse getSportById(Long id) {
         Sport sport = sportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
-
         return mapToResponse(sport);
     }
 
@@ -52,7 +54,7 @@ public class SportServiceImpl implements SportService {
         sport.setSlug(request.getSlug());
         sport.setDescription(request.getDescription());
         sport.setIconUrl(request.getIconUrl());
-        sport.setIsActive(true);
+        sport.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
 
         return mapToResponse(sportRepository.save(sport));
     }
@@ -62,13 +64,21 @@ public class SportServiceImpl implements SportService {
         Sport sport = sportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
 
+        String oldIconUrl = sport.getIconUrl();
+
         sport.setName(request.getName());
         sport.setSlug(request.getSlug());
         sport.setDescription(request.getDescription());
         sport.setIconUrl(request.getIconUrl());
         sport.setIsActive(request.getIsActive());
 
-        return mapToResponse(sportRepository.save(sport));
+        Sport savedSport = sportRepository.save(sport);
+
+        if (hasFileChanged(oldIconUrl, savedSport.getIconUrl())) {
+            fileStorageService.deleteFile(oldIconUrl);
+        }
+
+        return mapToResponse(savedSport);
     }
 
     @Override
@@ -76,7 +86,12 @@ public class SportServiceImpl implements SportService {
         Sport sport = sportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy môn thể thao"));
 
+        fileStorageService.deleteFile(sport.getIconUrl());
         sportRepository.delete(sport);
+    }
+
+    private boolean hasFileChanged(String oldUrl, String newUrl) {
+        return oldUrl != null && !oldUrl.isBlank() && !oldUrl.equals(newUrl);
     }
 
     private SportResponse mapToResponse(Sport sport) {

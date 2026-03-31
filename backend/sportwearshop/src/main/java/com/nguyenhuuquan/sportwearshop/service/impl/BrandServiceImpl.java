@@ -8,6 +8,7 @@ import com.nguyenhuuquan.sportwearshop.dto.brand.UpdateBrandRequest;
 import com.nguyenhuuquan.sportwearshop.entity.Brand;
 import com.nguyenhuuquan.sportwearshop.repository.BrandRepository;
 import com.nguyenhuuquan.sportwearshop.service.BrandService;
+import com.nguyenhuuquan.sportwearshop.service.FileStorageService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,9 +18,11 @@ import java.util.stream.Collectors;
 public class BrandServiceImpl implements BrandService {
 
     private final BrandRepository brandRepository;
+    private final FileStorageService fileStorageService;
 
-    public BrandServiceImpl(BrandRepository brandRepository) {
+    public BrandServiceImpl(BrandRepository brandRepository, FileStorageService fileStorageService) {
         this.brandRepository = brandRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -34,7 +37,6 @@ public class BrandServiceImpl implements BrandService {
     public BrandResponse getBrandById(Long id) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
-
         return mapToResponse(brand);
     }
 
@@ -62,13 +64,21 @@ public class BrandServiceImpl implements BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
 
+        String oldLogoUrl = brand.getLogoUrl();
+
         brand.setName(request.getName());
         brand.setSlug(request.getSlug());
         brand.setDescription(request.getDescription());
         brand.setLogoUrl(request.getLogoUrl());
         brand.setIsActive(request.getIsActive());
 
-        return mapToResponse(brandRepository.save(brand));
+        Brand savedBrand = brandRepository.save(brand);
+
+        if (hasFileChanged(oldLogoUrl, savedBrand.getLogoUrl())) {
+            fileStorageService.deleteFile(oldLogoUrl);
+        }
+
+        return mapToResponse(savedBrand);
     }
 
     @Override
@@ -76,7 +86,12 @@ public class BrandServiceImpl implements BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
 
+        fileStorageService.deleteFile(brand.getLogoUrl());
         brandRepository.delete(brand);
+    }
+
+    private boolean hasFileChanged(String oldUrl, String newUrl) {
+        return oldUrl != null && !oldUrl.isBlank() && !oldUrl.equals(newUrl);
     }
 
     private BrandResponse mapToResponse(Brand brand) {

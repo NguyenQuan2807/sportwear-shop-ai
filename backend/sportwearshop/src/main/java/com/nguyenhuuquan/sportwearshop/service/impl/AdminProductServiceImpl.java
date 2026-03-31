@@ -10,10 +10,13 @@ import com.nguyenhuuquan.sportwearshop.entity.Category;
 import com.nguyenhuuquan.sportwearshop.entity.Product;
 import com.nguyenhuuquan.sportwearshop.entity.Sport;
 import com.nguyenhuuquan.sportwearshop.repository.BrandRepository;
+import com.nguyenhuuquan.sportwearshop.repository.CartItemRepository;
 import com.nguyenhuuquan.sportwearshop.repository.CategoryRepository;
+import com.nguyenhuuquan.sportwearshop.repository.OrderItemRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductRepository;
 import com.nguyenhuuquan.sportwearshop.repository.SportRepository;
 import com.nguyenhuuquan.sportwearshop.service.AdminProductService;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,15 +29,23 @@ public class AdminProductServiceImpl implements AdminProductService {
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
     private final SportRepository sportRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final CartItemRepository cartItemRepository;
 
-    public AdminProductServiceImpl(ProductRepository productRepository,
-                                   CategoryRepository categoryRepository,
-                                   BrandRepository brandRepository,
-                                   SportRepository sportRepository) {
+    public AdminProductServiceImpl(
+            ProductRepository productRepository,
+            CategoryRepository categoryRepository,
+            BrandRepository brandRepository,
+            SportRepository sportRepository,
+            OrderItemRepository orderItemRepository,
+            CartItemRepository cartItemRepository
+    ) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.sportRepository = sportRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.cartItemRepository = cartItemRepository;
     }
 
     @Override
@@ -49,7 +60,6 @@ public class AdminProductServiceImpl implements AdminProductService {
     public AdminProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
-
         return mapToResponse(product);
     }
 
@@ -61,10 +71,8 @@ public class AdminProductServiceImpl implements AdminProductService {
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
-
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
-
         Sport sport = sportRepository.findById(request.getSportId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
@@ -90,10 +98,8 @@ public class AdminProductServiceImpl implements AdminProductService {
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
-
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
-
         Sport sport = sportRepository.findById(request.getSportId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
@@ -112,10 +118,24 @@ public class AdminProductServiceImpl implements AdminProductService {
     }
 
     @Override
+    @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
+        boolean hasOrderHistory = orderItemRepository.existsByProductVariantProductId(id);
+
+        if (hasOrderHistory) {
+            product.setIsActive(false);
+            productRepository.save(product);
+
+            // xóa khỏi giỏ hàng để không ai mua tiếp
+            cartItemRepository.deleteByProductVariantProductId(id);
+            return;
+        }
+
+        // chưa từng có đơn hàng thì có thể xóa cứng
+        cartItemRepository.deleteByProductVariantProductId(id);
         productRepository.delete(product);
     }
 

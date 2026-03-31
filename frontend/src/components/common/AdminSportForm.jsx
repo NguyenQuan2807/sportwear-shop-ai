@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
+import { uploadAdminImageApi } from "../../services/uploadService";
+
+const defaultForm = {
+  name: "",
+  slug: "",
+  description: "",
+  iconUrl: "",
+  isActive: true,
+};
 
 const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    iconUrl: "",
-    isActive: true,
-  });
+  const [formData, setFormData] = useState(defaultForm);
+  const [iconFile, setIconFile] = useState(null);
+  const [iconPreview, setIconPreview] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -18,25 +24,51 @@ const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
         iconUrl: initialData.iconUrl || "",
         isActive: initialData.isActive ?? true,
       });
+      setIconPreview(initialData.iconUrl || "");
+    } else {
+      setFormData(defaultForm);
+      setIconPreview("");
     }
+
+    setIconFile(null);
   }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleIconChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    let payload = { ...formData };
+
+    if (iconFile) {
+      setUploadingImage(true);
+      try {
+        const uploadRes = await uploadAdminImageApi(iconFile, "sports");
+        payload.iconUrl = uploadRes.data.url;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    onSubmit(payload);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-2">
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">Tên môn thể thao</label>
         <input
@@ -45,7 +77,6 @@ const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
           value={formData.name}
           onChange={handleChange}
           className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          placeholder="Ví dụ: Running"
           required
         />
       </div>
@@ -58,7 +89,6 @@ const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
           value={formData.slug}
           onChange={handleChange}
           className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          placeholder="running"
           required
         />
       </div>
@@ -69,23 +99,31 @@ const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
           name="description"
           value={formData.description}
           onChange={handleChange}
+          rows={4}
           className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          rows="4"
-          placeholder="Nhập mô tả môn thể thao"
         />
       </div>
 
       <div className="md:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-slate-700">Icon URL</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">Chọn icon từ máy</label>
         <input
-          type="text"
-          name="iconUrl"
-          value={formData.iconUrl}
-          onChange={handleChange}
+          type="file"
+          accept="image/*"
+          onChange={handleIconChange}
           className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          placeholder="https://example.com/icon.png"
         />
       </div>
+
+      {iconPreview && (
+        <div className="md:col-span-2 rounded-xl border border-slate-200 p-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">Xem trước icon</p>
+          <img
+            src={iconPreview}
+            alt="sport icon"
+            className="h-24 w-24 rounded-lg object-cover"
+          />
+        </div>
+      )}
 
       <div className="md:col-span-2">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -102,10 +140,14 @@ const AdminSportForm = ({ initialData, onSubmit, submitting, onCancel }) => {
       <div className="md:col-span-2 flex gap-3">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploadingImage}
           className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {submitting ? "Đang lưu..." : "Lưu"}
+          {uploadingImage
+            ? "Đang upload ảnh..."
+            : submitting
+            ? "Đang lưu..."
+            : "Lưu"}
         </button>
 
         <button

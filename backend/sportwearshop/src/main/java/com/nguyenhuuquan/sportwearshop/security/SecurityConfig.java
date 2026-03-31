@@ -30,7 +30,8 @@ public class SecurityConfig {
                                 "/api/products/**",
                                 "/api/sports/**",
                                 "/api/categories/**",
-                                "/api/brands/**"
+                                "/api/brands/**",
+                                "/uploads/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

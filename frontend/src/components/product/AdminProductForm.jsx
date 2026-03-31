@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getCategoriesApi } from "../../services/categoryService";
 import { getBrandsApi } from "../../services/brandService";
 import { getSportsApi } from "../../services/sportService";
+import { uploadAdminImageApi } from "../../services/uploadService";
 
 const defaultForm = {
   name: "",
@@ -28,6 +29,10 @@ const AdminProductForm = ({
   const [sports, setSports] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -40,25 +45,26 @@ const AdminProductForm = ({
         gender: initialData.gender || "UNISEX",
         material: initialData.material || "",
         thumbnailUrl: initialData.thumbnailUrl || "",
-        isActive:
-          initialData.isActive !== undefined ? initialData.isActive : true,
+        isActive: initialData.isActive !== undefined ? initialData.isActive : true,
       });
+      setThumbnailPreview(initialData.thumbnailUrl || "");
     } else {
       setFormData(defaultForm);
+      setThumbnailPreview("");
     }
+
+    setThumbnailFile(null);
   }, [initialData]);
 
   useEffect(() => {
     const fetchOptions = async () => {
       try {
         setLoadingOptions(true);
-
         const [categoryRes, brandRes, sportRes] = await Promise.all([
           getCategoriesApi(),
           getBrandsApi(),
           getSportsApi(),
         ]);
-
         setCategories(categoryRes.data || []);
         setBrands(brandRes.data || []);
         setSports(sportRes.data || []);
@@ -73,52 +79,85 @@ const AdminProductForm = ({
   }, []);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
       [name]:
         type === "checkbox"
-          ? e.target.checked
+          ? checked
           : ["categoryId", "brandId", "sportId"].includes(name)
           ? Number(value)
           : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleThumbnailChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    let payload = { ...formData };
+
+    if (thumbnailFile) {
+      setUploadingImage(true);
+      try {
+        const uploadRes = await uploadAdminImageApi(
+          thumbnailFile,
+          "products/thumbnails"
+        );
+        payload.thumbnailUrl = uploadRes.data.url;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    onSubmit(payload);
   };
 
   if (loadingOptions) {
-    return <div className="p-4">Đang tải dữ liệu form...</div>;
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
+        Đang tải dữ liệu form...
+      </div>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium">Tên sản phẩm</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
-      </div>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6"
+    >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Tên sản phẩm</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            required
+          />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium">Slug</label>
-        <input
-          type="text"
-          name="slug"
-          value={formData.slug}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
+        <div>
+          <label className="mb-1 block text-sm font-medium">Slug</label>
+          <input
+            type="text"
+            name="slug"
+            value={formData.slug}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            required
+          />
+        </div>
       </div>
 
       <div>
@@ -127,7 +166,7 @@ const AdminProductForm = ({
           name="description"
           value={formData.description}
           onChange={handleChange}
-          rows="4"
+          rows={4}
           className="w-full rounded-lg border border-slate-300 px-4 py-3"
         />
       </div>
@@ -215,16 +254,26 @@ const AdminProductForm = ({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Thumbnail URL</label>
+          <label className="mb-1 block text-sm font-medium">Ảnh thumbnail</label>
           <input
-            type="text"
-            name="thumbnailUrl"
-            value={formData.thumbnailUrl}
-            onChange={handleChange}
+            type="file"
+            accept="image/*"
+            onChange={handleThumbnailChange}
             className="w-full rounded-lg border border-slate-300 px-4 py-3"
           />
         </div>
       </div>
+
+      {thumbnailPreview && (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">Xem trước thumbnail</p>
+          <img
+            src={thumbnailPreview}
+            alt="product thumbnail"
+            className="h-32 w-32 rounded-lg object-cover"
+          />
+        </div>
+      )}
 
       <label className="flex items-center gap-3">
         <input
@@ -239,10 +288,14 @@ const AdminProductForm = ({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploadingImage}
           className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
-          {submitting ? "Đang lưu..." : "Lưu"}
+          {uploadingImage
+            ? "Đang upload ảnh..."
+            : submitting
+            ? "Đang lưu..."
+            : "Lưu"}
         </button>
 
         <button

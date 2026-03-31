@@ -3,6 +3,7 @@ import { getCategoriesApi } from "../../services/categoryService";
 import { getBrandsApi } from "../../services/brandService";
 import { getSportsApi } from "../../services/sportService";
 import { getProductsApi } from "../../services/productService";
+import { uploadAdminImageApi } from "../../services/uploadService";
 
 const PROMOTION_TYPES = [
   { value: "FLASH_SALE", label: "Flash Sale" },
@@ -38,35 +39,39 @@ const DEFAULT_TARGET = {
   targetId: "",
 };
 
-const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    promotionType: "FLASH_SALE",
-    discountType: "PERCENT",
-    discountValue: "",
-    maxDiscountValue: "",
-    priority: 0,
-    startTime: "",
-    endTime: "",
-    status: "ACTIVE",
-    isActive: true,
-    bannerImageUrl: "",
-    targets: [DEFAULT_TARGET],
-  });
+const defaultForm = {
+  name: "",
+  slug: "",
+  description: "",
+  promotionType: "FLASH_SALE",
+  discountType: "PERCENT",
+  discountValue: "",
+  maxDiscountValue: "",
+  priority: 0,
+  startTime: "",
+  endTime: "",
+  status: "ACTIVE",
+  isActive: true,
+  bannerImageUrl: "",
+  targets: [DEFAULT_TARGET],
+};
 
+const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => {
+  const [formData, setFormData] = useState(defaultForm);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [sports, setSports] = useState([]);
   const [products, setProducts] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   useEffect(() => {
     const fetchOptions = async () => {
       try {
         setLoadingOptions(true);
-
         const [categoriesRes, brandsRes, sportsRes, productsRes] = await Promise.all([
           getCategoriesApi(),
           getBrandsApi(),
@@ -89,30 +94,37 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
   }, []);
 
   useEffect(() => {
-    if (!initialData) return;
+    if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        slug: initialData.slug || "",
+        description: initialData.description || "",
+        promotionType: initialData.promotionType || "FLASH_SALE",
+        discountType: initialData.discountType || "PERCENT",
+        discountValue: initialData.discountValue ?? "",
+        maxDiscountValue: initialData.maxDiscountValue ?? "",
+        priority: initialData.priority ?? 0,
+        startTime: initialData.startTime ? initialData.startTime.slice(0, 16) : "",
+        endTime: initialData.endTime ? initialData.endTime.slice(0, 16) : "",
+        status: initialData.status || "ACTIVE",
+        isActive: initialData.isActive ?? true,
+        bannerImageUrl: initialData.bannerImageUrl || "",
+        targets:
+          initialData.targets?.length > 0
+            ? initialData.targets.map((item) => ({
+                targetType: item.targetType,
+                targetId: item.targetId,
+              }))
+            : [DEFAULT_TARGET],
+      });
 
-    setFormData({
-      name: initialData.name || "",
-      slug: initialData.slug || "",
-      description: initialData.description || "",
-      promotionType: initialData.promotionType || "FLASH_SALE",
-      discountType: initialData.discountType || "PERCENT",
-      discountValue: initialData.discountValue ?? "",
-      maxDiscountValue: initialData.maxDiscountValue ?? "",
-      priority: initialData.priority ?? 0,
-      startTime: initialData.startTime ? initialData.startTime.slice(0, 16) : "",
-      endTime: initialData.endTime ? initialData.endTime.slice(0, 16) : "",
-      status: initialData.status || "ACTIVE",
-      isActive: initialData.isActive ?? true,
-      bannerImageUrl: initialData.bannerImageUrl || "",
-      targets:
-        initialData.targets?.length > 0
-          ? initialData.targets.map((item) => ({
-              targetType: item.targetType,
-              targetId: item.targetId,
-            }))
-          : [DEFAULT_TARGET],
-    });
+      setBannerPreview(initialData.bannerImageUrl || "");
+    } else {
+      setFormData(defaultForm);
+      setBannerPreview("");
+    }
+
+    setBannerFile(null);
   }, [initialData]);
 
   const handleChange = (e) => {
@@ -122,6 +134,14 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const handleBannerChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setBannerFile(file);
+    setBannerPreview(URL.createObjectURL(file));
   };
 
   const handleTargetChange = (index, field, value) => {
@@ -169,10 +189,10 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const payload = {
+    let payload = {
       ...formData,
       discountValue: Number(formData.discountValue),
       maxDiscountValue:
@@ -184,60 +204,59 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
       })),
     };
 
+    if (bannerFile) {
+      setUploadingImage(true);
+      try {
+        const uploadRes = await uploadAdminImageApi(bannerFile, "promotions");
+        payload.bannerImageUrl = uploadRes.data.url;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
     onSubmit(payload);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Tên chương trình
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Tên chương trình</label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="Flash Sale Cuối Tuần"
             required
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Slug
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Slug</label>
           <input
             type="text"
             name="slug"
             value={formData.slug}
             onChange={handleChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="flash-sale-cuoi-tuan"
             required
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Mô tả
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Mô tả</label>
           <textarea
             name="description"
             value={formData.description}
             onChange={handleChange}
-            rows="3"
+            rows={4}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="Mô tả chương trình khuyến mãi"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Loại chương trình
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Loại chương trình</label>
           <select
             name="promotionType"
             value={formData.promotionType}
@@ -253,9 +272,7 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Kiểu giảm giá
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Kiểu giảm giá</label>
           <select
             name="discountType"
             value={formData.discountType}
@@ -271,52 +288,41 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Giá trị giảm
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Giá trị giảm</label>
           <input
             type="number"
             name="discountValue"
             value={formData.discountValue}
             onChange={handleChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="20"
             required
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Giảm tối đa
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Giảm tối đa</label>
           <input
             type="number"
             name="maxDiscountValue"
             value={formData.maxDiscountValue}
             onChange={handleChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="100000"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Priority
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
           <input
             type="number"
             name="priority"
             value={formData.priority}
             onChange={handleChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="0"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Trạng thái
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Trạng thái</label>
           <select
             name="status"
             value={formData.status}
@@ -332,9 +338,7 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Bắt đầu
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Bắt đầu</label>
           <input
             type="datetime-local"
             name="startTime"
@@ -346,9 +350,7 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Kết thúc
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Kết thúc</label>
           <input
             type="datetime-local"
             name="endTime"
@@ -360,18 +362,25 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Banner image URL
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Banner ảnh</label>
           <input
-            type="text"
-            name="bannerImageUrl"
-            value={formData.bannerImageUrl}
-            onChange={handleChange}
+            type="file"
+            accept="image/*"
+            onChange={handleBannerChange}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="https://..."
           />
         </div>
+
+        {bannerPreview && (
+          <div className="md:col-span-2 rounded-xl border border-slate-200 p-4">
+            <p className="mb-2 text-sm font-medium text-slate-700">Xem trước banner</p>
+            <img
+              src={bannerPreview}
+              alt="promotion banner"
+              className="h-40 w-full rounded-lg object-cover md:w-80"
+            />
+          </div>
+        )}
 
         <div className="md:col-span-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -473,10 +482,14 @@ const AdminPromotionForm = ({ initialData, onSubmit, submitting, onCancel }) => 
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploadingImage}
           className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {submitting ? "Đang lưu..." : "Lưu chương trình"}
+          {uploadingImage
+            ? "Đang upload ảnh..."
+            : submitting
+            ? "Đang lưu..."
+            : "Lưu chương trình"}
         </button>
 
         <button

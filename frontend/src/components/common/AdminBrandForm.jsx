@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { uploadAdminImageApi } from "../../services/uploadService";
 
 const defaultForm = {
   name: "",
@@ -15,6 +16,9 @@ const AdminBrandForm = ({
   onCancel,
 }) => {
   const [formData, setFormData] = useState(defaultForm);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -23,52 +27,77 @@ const AdminBrandForm = ({
         slug: initialData.slug || "",
         description: initialData.description || "",
         logoUrl: initialData.logoUrl || "",
-        isActive:
-          initialData.isActive !== undefined ? initialData.isActive : true,
+        isActive: initialData.isActive !== undefined ? initialData.isActive : true,
       });
+      setLogoPreview(initialData.logoUrl || "");
     } else {
       setFormData(defaultForm);
+      setLogoPreview("");
     }
+
+    setLogoFile(null);
   }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    let payload = { ...formData };
+
+    if (logoFile) {
+      setUploadingImage(true);
+      try {
+        const uploadRes = await uploadAdminImageApi(logoFile, "brands");
+        payload.logoUrl = uploadRes.data.url;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    onSubmit(payload);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium">Tên thương hiệu</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Tên thương hiệu</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            required
+          />
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium">Slug</label>
-        <input
-          type="text"
-          name="slug"
-          value={formData.slug}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
+        <div>
+          <label className="mb-1 block text-sm font-medium">Slug</label>
+          <input
+            type="text"
+            name="slug"
+            value={formData.slug}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            required
+          />
+        </div>
       </div>
 
       <div>
@@ -77,32 +106,28 @@ const AdminBrandForm = ({
           name="description"
           value={formData.description}
           onChange={handleChange}
-          rows="4"
+          rows={4}
           className="w-full rounded-lg border border-slate-300 px-4 py-3"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Logo URL</label>
+        <label className="mb-1 block text-sm font-medium">Chọn logo từ máy</label>
         <input
-          type="text"
-          name="logoUrl"
-          value={formData.logoUrl}
-          onChange={handleChange}
+          type="file"
+          accept="image/*"
+          onChange={handleLogoChange}
           className="w-full rounded-lg border border-slate-300 px-4 py-3"
         />
       </div>
 
-      {formData.logoUrl && (
+      {logoPreview && (
         <div className="rounded-xl border border-slate-200 p-4">
           <p className="mb-2 text-sm font-medium text-slate-700">Xem trước logo</p>
           <img
-            src={formData.logoUrl}
+            src={logoPreview}
             alt="brand logo"
-            className="h-20 w-20 rounded-lg object-cover"
-            onError={(e) => {
-              e.target.style.display = "none";
-            }}
+            className="h-24 w-24 rounded-lg object-cover"
           />
         </div>
       )}
@@ -120,10 +145,14 @@ const AdminBrandForm = ({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploadingImage}
           className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
         >
-          {submitting ? "Đang lưu..." : "Lưu"}
+          {uploadingImage
+            ? "Đang upload ảnh..."
+            : submitting
+            ? "Đang lưu..."
+            : "Lưu"}
         </button>
 
         <button

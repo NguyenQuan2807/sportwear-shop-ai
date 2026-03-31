@@ -7,10 +7,12 @@ import com.nguyenhuuquan.sportwearshop.entity.Promotion;
 import com.nguyenhuuquan.sportwearshop.entity.PromotionTarget;
 import com.nguyenhuuquan.sportwearshop.repository.PromotionRepository;
 import com.nguyenhuuquan.sportwearshop.repository.PromotionTargetRepository;
+import com.nguyenhuuquan.sportwearshop.service.FileStorageService;
 import com.nguyenhuuquan.sportwearshop.service.PromotionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,11 +21,16 @@ public class PromotionServiceImpl implements PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final PromotionTargetRepository promotionTargetRepository;
+    private final FileStorageService fileStorageService;
 
-    public PromotionServiceImpl(PromotionRepository promotionRepository,
-                                PromotionTargetRepository promotionTargetRepository) {
+    public PromotionServiceImpl(
+            PromotionRepository promotionRepository,
+            PromotionTargetRepository promotionTargetRepository,
+            FileStorageService fileStorageService
+    ) {
         this.promotionRepository = promotionRepository;
         this.promotionTargetRepository = promotionTargetRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -38,7 +45,6 @@ public class PromotionServiceImpl implements PromotionService {
     public PromotionResponse getPromotionById(Long id) {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy promotion"));
-
         return mapToResponse(promotion);
     }
 
@@ -72,12 +78,18 @@ public class PromotionServiceImpl implements PromotionService {
 
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
+        String oldBannerImageUrl = promotion.getBannerImageUrl();
+
         applyPromotionData(promotion, request);
         Promotion savedPromotion = promotionRepository.save(promotion);
 
         List<PromotionTarget> oldTargets = promotionTargetRepository.findByPromotionId(savedPromotion.getId());
         promotionTargetRepository.deleteAll(oldTargets);
         saveTargets(savedPromotion, request.getTargets());
+
+        if (hasFileChanged(oldBannerImageUrl, savedPromotion.getBannerImageUrl())) {
+            fileStorageService.deleteFile(oldBannerImageUrl);
+        }
 
         return mapToResponse(savedPromotion);
     }
@@ -90,10 +102,12 @@ public class PromotionServiceImpl implements PromotionService {
 
         List<PromotionTarget> targets = promotionTargetRepository.findByPromotionId(id);
         promotionTargetRepository.deleteAll(targets);
+
+        fileStorageService.deleteFile(promotion.getBannerImageUrl());
         promotionRepository.delete(promotion);
     }
 
-    private void validateTimeRange(java.time.LocalDateTime start, java.time.LocalDateTime end) {
+    private void validateTimeRange(LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null && end.isBefore(start)) {
             throw new BadRequestException("Thời gian kết thúc phải sau thời gian bắt đầu");
         }
@@ -141,6 +155,10 @@ public class PromotionServiceImpl implements PromotionService {
         }
     }
 
+    private boolean hasFileChanged(String oldUrl, String newUrl) {
+        return oldUrl != null && !oldUrl.isBlank() && !oldUrl.equals(newUrl);
+    }
+
     private PromotionResponse mapToResponse(Promotion promotion) {
         List<PromotionTargetResponse> targets = promotionTargetRepository.findByPromotionId(promotion.getId())
                 .stream()
@@ -169,6 +187,7 @@ public class PromotionServiceImpl implements PromotionService {
         response.setIsActive(promotion.getIsActive());
         response.setBannerImageUrl(promotion.getBannerImageUrl());
         response.setTargets(targets);
+
         return response;
     }
 }
