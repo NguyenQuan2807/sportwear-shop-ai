@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.controller;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductResponse;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.CreateProductRequest;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductRequest;
@@ -21,8 +22,24 @@ public class AdminProductController {
     }
 
     @GetMapping
-    public List<AdminProductResponse> getAllProducts() {
-        return adminProductService.getAllProducts();
+    public List<AdminProductResponse> getAllProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) Long sportId,
+            @RequestParam(required = false) Gender gender,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "newest") String sort
+    ) {
+        return adminProductService.getAllProducts(
+                keyword,
+                categoryId,
+                brandId,
+                sportId,
+                gender,
+                isActive,
+                sort
+        );
     }
 
     @GetMapping("/{id}")
@@ -36,8 +53,10 @@ public class AdminProductController {
     }
 
     @PutMapping("/{id}")
-    public AdminProductResponse updateProduct(@PathVariable Long id,
-                                              @Valid @RequestBody UpdateProductRequest request) {
+    public AdminProductResponse updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProductRequest request
+    ) {
         return adminProductService.updateProduct(id, request);
     }
 

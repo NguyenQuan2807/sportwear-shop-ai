@@ -12,6 +12,8 @@ import com.nguyenhuuquan.sportwearshop.entity.Cart;
 import com.nguyenhuuquan.sportwearshop.entity.CartItem;
 import com.nguyenhuuquan.sportwearshop.entity.ProductVariant;
 import com.nguyenhuuquan.sportwearshop.entity.User;
+import com.nguyenhuuquan.sportwearshop.entity.ProductImage;
+import com.nguyenhuuquan.sportwearshop.repository.ProductImageRepository;
 import com.nguyenhuuquan.sportwearshop.repository.CartItemRepository;
 import com.nguyenhuuquan.sportwearshop.repository.CartRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductVariantRepository;
@@ -31,17 +33,22 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepository cartItemRepository;
     private final ProductVariantRepository productVariantRepository;
     private final PromotionPricingService promotionPricingService;
+    private final ProductImageRepository productImageRepository;
 
-    public CartServiceImpl(UserRepository userRepository,
-                           CartRepository cartRepository,
-                           CartItemRepository cartItemRepository,
-                           ProductVariantRepository productVariantRepository,
-                           PromotionPricingService promotionPricingService) {
+    public CartServiceImpl(
+            UserRepository userRepository,
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            ProductVariantRepository productVariantRepository,
+            PromotionPricingService promotionPricingService,
+            ProductImageRepository productImageRepository
+    ) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productVariantRepository = productVariantRepository;
         this.promotionPricingService = promotionPricingService;
+        this.productImageRepository = productImageRepository;
     }
 
     @Override
@@ -185,7 +192,7 @@ public class CartServiceImpl implements CartService {
         response.setProductId(variant.getProduct().getId());
         response.setProductVariantId(variant.getId());
         response.setProductName(variant.getProduct().getName());
-        response.setThumbnailUrl(variant.getProduct().getThumbnailUrl());
+        response.setThumbnailUrl(resolveCartItemThumbnail(variant));
         response.setSize(variant.getSize());
         response.setColor(variant.getColor());
 
@@ -206,5 +213,38 @@ public class CartServiceImpl implements CartService {
         response.setStockQuantity(variant.getStockQuantity());
 
         return response;
+    }
+
+    private String resolveCartItemThumbnail(ProductVariant variant) {
+        Long productId = variant.getProduct().getId();
+        String color = variant.getColor() != null ? variant.getColor().trim() : null;
+
+        if (color != null && !color.isEmpty()) {
+            List<ProductImage> colorImages =
+                    productImageRepository.findByProductIdAndColorIgnoreCaseOrderBySortOrderAscIdAsc(productId, color);
+
+            if (!colorImages.isEmpty()) {
+                ProductImage thumbnail = colorImages.stream()
+                        .filter(image -> Boolean.TRUE.equals(image.getIsThumbnail()))
+                        .findFirst()
+                        .orElse(colorImages.get(0));
+
+                return thumbnail.getImageUrl();
+            }
+        }
+
+        List<ProductImage> commonImages =
+                productImageRepository.findByProductIdAndColorIsNullOrderBySortOrderAscIdAsc(productId);
+
+        if (!commonImages.isEmpty()) {
+            ProductImage thumbnail = commonImages.stream()
+                    .filter(image -> Boolean.TRUE.equals(image.getIsThumbnail()))
+                    .findFirst()
+                    .orElse(commonImages.get(0));
+
+            return thumbnail.getImageUrl();
+        }
+
+        return variant.getProduct().getThumbnailUrl();
     }
 }

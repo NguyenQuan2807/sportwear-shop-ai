@@ -26,14 +26,18 @@ public class AdminProductImageController {
     }
 
     @PostMapping("/product/{productId}")
-    public AdminProductImageResponse createImage(@PathVariable Long productId,
-                                                 @Valid @RequestBody CreateProductImageRequest request) {
+    public AdminProductImageResponse createImage(
+            @PathVariable Long productId,
+            @Valid @RequestBody CreateProductImageRequest request
+    ) {
         return adminProductImageService.createImage(productId, request);
     }
 
     @PutMapping("/{imageId}")
-    public AdminProductImageResponse updateImage(@PathVariable Long imageId,
-                                                 @Valid @RequestBody UpdateProductImageRequest request) {
+    public AdminProductImageResponse updateImage(
+            @PathVariable Long imageId,
+            @Valid @RequestBody UpdateProductImageRequest request
+    ) {
         return adminProductImageService.updateImage(imageId, request);
     }
 

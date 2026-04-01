@@ -11,6 +11,9 @@ public class CreateProductImageRequest {
     @NotBlank(message = "imageUrl không được để trống")
     private String imageUrl;
 
+    private String color;
+
     private Boolean isThumbnail;
+
     private Integer sortOrder;
 }

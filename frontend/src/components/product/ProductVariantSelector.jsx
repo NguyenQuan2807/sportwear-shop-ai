@@ -1,218 +1,214 @@
+import { useMemo } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
+
+const sizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
+
+const normalizeText = (value) => String(value || "").trim().toLowerCase();
+
+const sortBySize = (variants) => {
+  return [...variants].sort((a, b) => {
+    const sizeA = String(a.size || "").toUpperCase();
+    const sizeB = String(b.size || "").toUpperCase();
+    const indexA = sizeOrder.indexOf(sizeA);
+    const indexB = sizeOrder.indexOf(sizeB);
+
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+
+    return sizeA.localeCompare(sizeB, "vi");
+  });
+};
 
 const ProductVariantSelector = ({
   variants = [],
   selectedVariant,
   onSelectVariant,
 }) => {
+  const availableColors = useMemo(() => {
+    return Array.from(
+      new Set(
+        variants
+          .map((variant) => String(variant.color || "").trim())
+          .filter(Boolean)
+      )
+    );
+  }, [variants]);
+
+  const selectedColor = selectedVariant?.color || availableColors[0] || "";
+
+  const variantsBySelectedColor = useMemo(() => {
+    return sortBySize(
+      variants.filter(
+        (variant) =>
+          normalizeText(variant.color) === normalizeText(selectedColor)
+      )
+    );
+  }, [variants, selectedColor]);
+
+  const handleSelectColor = (color) => {
+    const matchedVariants = sortBySize(
+      variants.filter(
+        (variant) => normalizeText(variant.color) === normalizeText(color)
+      )
+    );
+
+    const preferred =
+      matchedVariants.find((variant) => Number(variant.stockQuantity || 0) > 0) ||
+      matchedVariants[0];
+
+    if (preferred) {
+      onSelectVariant(preferred);
+    }
+  };
+
+  const handleSelectSize = (variant) => {
+    onSelectVariant(variant);
+  };
+
   if (!variants.length) {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-        Sản phẩm chưa có biến thể.
+      <div className="rounded-3xl border border-slate-200 bg-white p-6">
+        <p className="text-slate-500">Sản phẩm chưa có biến thể.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
-            Variant Selection
-          </p>
-          <h3 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
-            Chọn biến thể phù hợp
-          </h3>
-        </div>
-
-        <p className="text-sm text-slate-500">
-          Có <span className="font-semibold text-slate-900">{variants.length}</span>{" "}
-          biến thể khả dụng
+    <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+          Variant Selection
+        </p>
+        <h3 className="mt-2 text-2xl font-bold text-slate-900">
+          Chọn màu và size
+        </h3>
+        <p className="mt-2 text-sm text-slate-500">
+          Có {variants.length} biến thể khả dụng
         </p>
       </div>
 
       <div className="space-y-3">
-        {variants.map((variant) => {
-          const isSelected = selectedVariant?.id === variant.id;
-          const hasPromotion = Boolean(variant.onPromotion);
-          const isFlashSale = Boolean(variant.flashSale);
-          const outOfStock = Number(variant.stockQuantity || 0) <= 0;
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-800">Màu sắc</p>
+          <p className="text-sm text-slate-500">{selectedColor || "Chưa chọn"}</p>
+        </div>
 
-          return (
-            <button
-              key={variant.id}
-              type="button"
-              onClick={() => onSelectVariant(variant)}
-              className={`w-full rounded-[24px] border p-4 text-left transition duration-200 sm:p-5 ${
-                isSelected
-                  ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-200"
-                  : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
-              }`}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        isSelected
-                          ? "bg-white/15 text-white"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      Size {variant.size}
-                    </span>
+        <div className="flex flex-wrap gap-2">
+          {availableColors.map((color) => {
+            const isActive = normalizeText(color) === normalizeText(selectedColor);
 
-                    <span
-                      className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        isSelected
-                          ? "bg-white/15 text-white"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {variant.color}
-                    </span>
-
-                    {hasPromotion && (
-                      <span className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow">
-                        -{variant.discountPercent || 0}%
-                      </span>
-                    )}
-
-                    {isFlashSale && (
-                      <span className="rounded-full bg-orange-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white shadow">
-                        Flash Sale
-                      </span>
-                    )}
-
-                    {outOfStock && (
-                      <span
-                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
-                          isSelected
-                            ? "bg-white/15 text-white"
-                            : "bg-slate-200 text-slate-600"
-                        }`}
-                      >
-                        Hết hàng
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <p
-                      className={`text-lg font-black tracking-tight ${
-                        isSelected ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      Size: {variant.size} • Màu: {variant.color}
-                    </p>
-
-                    <p
-                      className={`mt-1 text-sm ${
-                        isSelected ? "text-white/70" : "text-slate-500"
-                      }`}
-                    >
-                      SKU: {variant.sku}
-                    </p>
-                  </div>
-
-                  {variant.appliedPromotion?.promotionName && (
-                    <div
-                      className={`inline-flex max-w-full rounded-2xl px-3 py-2 text-sm font-semibold ${
-                        isSelected
-                          ? "bg-white/10 text-white"
-                          : "bg-red-50 text-red-500"
-                      }`}
-                    >
-                      {variant.appliedPromotion.promotionName}
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid gap-3 sm:min-w-[220px]">
-                  <div className="rounded-[20px] border border-black/5 bg-black/5 p-4 backdrop-blur">
-                    {!hasPromotion ? (
-                      <>
-                        <p
-                          className={`text-xs font-bold uppercase tracking-[0.18em] ${
-                            isSelected ? "text-white/60" : "text-slate-400"
-                          }`}
-                        >
-                          Giá bán
-                        </p>
-                        <p
-                          className={`mt-2 text-2xl font-black tracking-tight ${
-                            isSelected ? "text-white" : "text-slate-900"
-                          }`}
-                        >
-                          {formatCurrency(variant.price)}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p
-                          className={`text-xs font-bold uppercase tracking-[0.18em] ${
-                            isSelected ? "text-white/60" : "text-slate-400"
-                          }`}
-                        >
-                          Giá ưu đãi
-                        </p>
-                        <p
-                          className={`mt-1 text-sm line-through ${
-                            isSelected ? "text-white/50" : "text-slate-400"
-                          }`}
-                        >
-                          {formatCurrency(variant.originalPrice)}
-                        </p>
-                        <p className="mt-1 text-2xl font-black tracking-tight text-red-400">
-                          {formatCurrency(variant.finalPrice)}
-                        </p>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <MiniStat
-                      isSelected={isSelected}
-                      label="Tồn kho"
-                      value={variant.stockQuantity ?? 0}
-                    />
-                    <MiniStat
-                      isSelected={isSelected}
-                      label="Trạng thái"
-                      value={outOfStock ? "Hết" : "Sẵn"}
-                    />
-                  </div>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={color}
+                type="button"
+                onClick={() => handleSelectColor(color)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {color}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-800">Kích thước</p>
+          <p className="text-sm text-slate-500">
+            {variantsBySelectedColor.length} size
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {variantsBySelectedColor.map((variant) => {
+            const isSelected = selectedVariant?.id === variant.id;
+            const outOfStock = Number(variant.stockQuantity || 0) <= 0;
+
+            return (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => handleSelectSize(variant)}
+                className={`min-w-[82px] rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  isSelected
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : outOfStock
+                    ? "border-slate-200 bg-slate-100 text-slate-400"
+                    : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                }`}
+              >
+                <div>{variant.size}</div>
+                <div className="mt-1 text-[11px] font-medium opacity-80">
+                  {outOfStock ? "Hết hàng" : `Kho: ${variant.stockQuantity}`}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {selectedVariant && (
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                  Size {selectedVariant.size}
+                </span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                  {selectedVariant.color}
+                </span>
+                {selectedVariant.onPromotion && (
+                  <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-600">
+                    -{selectedVariant.discountPercent || 0}%
+                  </span>
+                )}
+                {selectedVariant.flashSale && (
+                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-600">
+                    Flash Sale
+                  </span>
+                )}
+              </div>
+
+              <p className="text-sm text-slate-500">SKU: {selectedVariant.sku}</p>
+
+              {selectedVariant.appliedPromotion?.promotionName && (
+                <p className="text-sm font-medium text-emerald-600">
+                  {selectedVariant.appliedPromotion.promotionName}
+                </p>
+              )}
+            </div>
+
+            <div className="text-right">
+              {!selectedVariant.onPromotion ? (
+                <>
+                  <p className="text-sm text-slate-500">Giá bán</p>
+                  <p className="text-xl font-bold text-slate-900">
+                    {formatCurrency(selectedVariant.price)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-500">Giá ưu đãi</p>
+                  <p className="text-sm text-slate-400 line-through">
+                    {formatCurrency(selectedVariant.originalPrice)}
+                  </p>
+                  <p className="text-xl font-bold text-red-600">
+                    {formatCurrency(selectedVariant.finalPrice)}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-const MiniStat = ({ label, value, isSelected }) => (
-  <div
-    className={`rounded-[18px] px-4 py-3 ${
-      isSelected ? "bg-white/10" : "bg-slate-50"
-    }`}
-  >
-    <p
-      className={`text-[11px] font-bold uppercase tracking-[0.18em] ${
-        isSelected ? "text-white/60" : "text-slate-400"
-      }`}
-    >
-      {label}
-    </p>
-    <p
-      className={`mt-1 text-sm font-bold ${
-        isSelected ? "text-white" : "text-slate-800"
-      }`}
-    >
-      {value}
-    </p>
-  </div>
-);
 
 export default ProductVariantSelector;

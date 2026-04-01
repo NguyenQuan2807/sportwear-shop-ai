@@ -9,35 +9,31 @@ import com.nguyenhuuquan.sportwearshop.entity.ProductImage;
 import com.nguyenhuuquan.sportwearshop.repository.ProductImageRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductRepository;
 import com.nguyenhuuquan.sportwearshop.service.AdminProductImageService;
-import com.nguyenhuuquan.sportwearshop.service.FileStorageService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class AdminProductImageServiceImpl implements AdminProductImageService {
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
-    private final FileStorageService fileStorageService;
 
     public AdminProductImageServiceImpl(
             ProductRepository productRepository,
-            ProductImageRepository productImageRepository,
-            FileStorageService fileStorageService
+            ProductImageRepository productImageRepository
     ) {
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
-        this.fileStorageService = fileStorageService;
     }
 
     @Override
     public List<AdminProductImageResponse> getImagesByProductId(Long productId) {
-        return productImageRepository.findByProductId(productId)
+        return productImageRepository.findByProductIdOrderBySortOrderAscIdAsc(productId)
                 .stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -45,13 +41,29 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
+        String normalizedColor = normalizeColor(request.getColor());
+        List<ProductImage> existingGroup = getImagesInColorGroup(productId, normalizedColor);
+
         ProductImage image = new ProductImage();
         image.setProduct(product);
         image.setImageUrl(request.getImageUrl());
-        image.setIsThumbnail(request.getIsThumbnail() != null ? request.getIsThumbnail() : false);
+        image.setColor(normalizedColor);
         image.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
 
-        return mapToResponse(productImageRepository.save(image));
+        boolean shouldBeThumbnail =
+                Boolean.TRUE.equals(request.getIsThumbnail()) || existingGroup.isEmpty();
+
+        image.setIsThumbnail(shouldBeThumbnail);
+
+        ProductImage saved = productImageRepository.save(image);
+
+        if (shouldBeThumbnail) {
+            ensureSingleThumbnail(saved);
+        } else {
+            promoteFirstImageAsThumbnail(productId, normalizedColor);
+        }
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -59,19 +71,28 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
         ProductImage image = productImageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ảnh sản phẩm"));
 
-        String oldImageUrl = image.getImageUrl();
+        Long productId = image.getProduct().getId();
+        String previousColor = normalizeColor(image.getColor());
+        boolean previousThumbnail = Boolean.TRUE.equals(image.getIsThumbnail());
 
         image.setImageUrl(request.getImageUrl());
-        image.setIsThumbnail(request.getIsThumbnail());
-        image.setSortOrder(request.getSortOrder());
+        image.setColor(normalizeColor(request.getColor()));
+        image.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0);
+        image.setIsThumbnail(Boolean.TRUE.equals(request.getIsThumbnail()));
 
-        ProductImage savedImage = productImageRepository.save(image);
+        ProductImage saved = productImageRepository.save(image);
+        String currentColor = normalizeColor(saved.getColor());
 
-        if (hasFileChanged(oldImageUrl, savedImage.getImageUrl())) {
-            fileStorageService.deleteFile(oldImageUrl);
+        if (Boolean.TRUE.equals(saved.getIsThumbnail())) {
+            ensureSingleThumbnail(saved);
         }
 
-        return mapToResponse(savedImage);
+        if (previousThumbnail || !Objects.equals(previousColor, currentColor)) {
+            promoteFirstImageAsThumbnail(productId, previousColor);
+            promoteFirstImageAsThumbnail(productId, currentColor);
+        }
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -79,12 +100,64 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
         ProductImage image = productImageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy ảnh sản phẩm"));
 
-        fileStorageService.deleteFile(image.getImageUrl());
+        Long productId = image.getProduct().getId();
+        String color = normalizeColor(image.getColor());
+        boolean wasThumbnail = Boolean.TRUE.equals(image.getIsThumbnail());
+
         productImageRepository.delete(image);
+
+        if (wasThumbnail) {
+            promoteFirstImageAsThumbnail(productId, color);
+        }
     }
 
-    private boolean hasFileChanged(String oldUrl, String newUrl) {
-        return oldUrl != null && !oldUrl.isBlank() && !oldUrl.equals(newUrl);
+    private void ensureSingleThumbnail(ProductImage currentImage) {
+        List<ProductImage> imagesInGroup = getImagesInColorGroup(
+                currentImage.getProduct().getId(),
+                normalizeColor(currentImage.getColor())
+        );
+
+        for (ProductImage image : imagesInGroup) {
+            if (!image.getId().equals(currentImage.getId()) && Boolean.TRUE.equals(image.getIsThumbnail())) {
+                image.setIsThumbnail(false);
+            }
+        }
+
+        productImageRepository.saveAll(imagesInGroup);
+    }
+
+    private void promoteFirstImageAsThumbnail(Long productId, String color) {
+        List<ProductImage> imagesInGroup = getImagesInColorGroup(productId, color);
+
+        if (imagesInGroup.isEmpty()) {
+            return;
+        }
+
+        boolean hasThumbnail = imagesInGroup.stream()
+                .anyMatch(image -> Boolean.TRUE.equals(image.getIsThumbnail()));
+
+        if (!hasThumbnail) {
+            ProductImage firstImage = imagesInGroup.get(0);
+            firstImage.setIsThumbnail(true);
+            productImageRepository.save(firstImage);
+        }
+    }
+
+    private List<ProductImage> getImagesInColorGroup(Long productId, String color) {
+        if (color == null) {
+            return productImageRepository.findByProductIdAndColorIsNullOrderBySortOrderAscIdAsc(productId);
+        }
+
+        return productImageRepository.findByProductIdAndColorIgnoreCaseOrderBySortOrderAscIdAsc(productId, color);
+    }
+
+    private String normalizeColor(String color) {
+        if (color == null) {
+            return null;
+        }
+
+        String trimmed = color.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private AdminProductImageResponse mapToResponse(ProductImage image) {
@@ -92,6 +165,7 @@ public class AdminProductImageServiceImpl implements AdminProductImageService {
         response.setId(image.getId());
         response.setProductId(image.getProduct().getId());
         response.setImageUrl(image.getImageUrl());
+        response.setColor(image.getColor());
         response.setIsThumbnail(image.getIsThumbnail());
         response.setSortOrder(image.getSortOrder());
         return response;

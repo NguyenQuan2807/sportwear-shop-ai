@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createAdminBrandApi,
   deleteAdminBrandApi,
@@ -7,6 +7,14 @@ import {
   updateAdminBrandApi,
 } from "../../services/adminBrandService";
 import AdminBrandForm from "../../components/common/AdminBrandForm";
+import AdminTableToolbar from "../../components/common/AdminTableToolbar";
+
+const normalizeText = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
 const ManageBrandsPage = () => {
   const [brands, setBrands] = useState([]);
@@ -14,15 +22,14 @@ const ManageBrandsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
   const [showForm, setShowForm] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchBrands = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-
       const response = await getAdminBrandsApi();
       setBrands(response.data || []);
     } catch (error) {
@@ -38,6 +45,21 @@ const ManageBrandsPage = () => {
     fetchBrands();
   }, []);
 
+  const filteredBrands = useMemo(() => {
+    const keyword = normalizeText(searchTerm);
+    if (!keyword) return brands;
+
+    return brands.filter((brand) =>
+      [
+        brand.id,
+        brand.name,
+        brand.slug,
+        brand.description,
+        brand.isActive ? "hoạt động" : "ẩn",
+      ].some((value) => normalizeText(value).includes(keyword))
+    );
+  }, [brands, searchTerm]);
+
   const handleCreateClick = () => {
     setEditingBrand(null);
     setShowForm(true);
@@ -49,7 +71,6 @@ const ManageBrandsPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       const response = await getAdminBrandDetailApi(id);
       setEditingBrand(response.data);
       setShowForm(true);
@@ -67,7 +88,6 @@ const ManageBrandsPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       await deleteAdminBrandApi(id);
       setSuccessMessage("Xóa thương hiệu thành công");
       fetchBrands();
@@ -111,23 +131,16 @@ const ManageBrandsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">
-            Quản lý thương hiệu
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Thêm, sửa, xóa thương hiệu sản phẩm
-          </p>
-        </div>
-
-        <button
-          onClick={handleCreateClick}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
-        >
-          Thêm thương hiệu
-        </button>
-      </div>
+      <AdminTableToolbar
+        title="Quản lý thương hiệu"
+        description="Thêm, sửa, xóa thương hiệu sản phẩm"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Tìm theo tên, slug, mô tả, trạng thái..."
+        createLabel="Thêm thương hiệu"
+        onCreateClick={handleCreateClick}
+        resultCount={filteredBrands.length}
+      />
 
       {successMessage && (
         <div className="rounded-xl bg-green-100 p-4 text-green-700 shadow">
@@ -158,26 +171,30 @@ const ManageBrandsPage = () => {
 
       <div className="overflow-hidden rounded-2xl bg-white shadow">
         {loading ? (
-          <div className="p-6">Đang tải danh sách thương hiệu...</div>
-        ) : brands.length === 0 ? (
-          <div className="p-6 text-slate-500">Chưa có thương hiệu nào.</div>
+          <div className="p-6 text-slate-500">Đang tải danh sách thương hiệu...</div>
+        ) : filteredBrands.length === 0 ? (
+          <div className="p-6 text-slate-500">
+            {searchTerm
+              ? "Không tìm thấy thương hiệu phù hợp."
+              : "Chưa có thương hiệu nào."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100">
+              <thead className="bg-slate-100 text-left text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-                  <th className="px-4 py-3 text-left">Logo</th>
-                  <th className="px-4 py-3 text-left">Tên</th>
-                  <th className="px-4 py-3 text-left">Slug</th>
-                  <th className="px-4 py-3 text-left">Mô tả</th>
-                  <th className="px-4 py-3 text-left">Trạng thái</th>
-                  <th className="px-4 py-3 text-left">Hành động</th>
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">Logo</th>
+                  <th className="px-4 py-3">Tên</th>
+                  <th className="px-4 py-3">Slug</th>
+                  <th className="px-4 py-3">Mô tả</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Hành động</th>
                 </tr>
               </thead>
 
               <tbody>
-                {brands.map((brand) => (
+                {filteredBrands.map((brand) => (
                   <tr key={brand.id} className="border-t border-slate-200">
                     <td className="px-4 py-3">{brand.id}</td>
                     <td className="px-4 py-3">
@@ -188,31 +205,27 @@ const ManageBrandsPage = () => {
                           className="h-12 w-12 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
-                          No Image
-                        </div>
+                        <span className="text-slate-400">No Image</span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">
                       {brand.name}
                     </td>
                     <td className="px-4 py-3">{brand.slug}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {brand.description || "-"}
-                    </td>
+                    <td className="px-4 py-3">{brand.description || "-"}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           brand.isActive
                             ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
+                            : "bg-slate-200 text-slate-600"
                         }`}
                       >
                         {brand.isActive ? "Hoạt động" : "Ẩn"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleEditClick(brand.id)}
                           className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"

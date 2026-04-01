@@ -85,7 +85,7 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
         List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
-        List<ProductImage> images = productImageRepository.findByProductId(product.getId());
+        List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAscIdAsc(product.getId());
 
         ProductDetailResponse response = new ProductDetailResponse();
         response.setId(product.getId());
@@ -192,6 +192,7 @@ public class ProductServiceImpl implements ProductService {
         ProductImageResponse response = new ProductImageResponse();
         response.setId(image.getId());
         response.setImageUrl(image.getImageUrl());
+        response.setColor(image.getColor());
         response.setIsThumbnail(image.getIsThumbnail());
         response.setSortOrder(image.getSortOrder());
         return response;

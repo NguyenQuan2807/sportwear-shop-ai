@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createAdminCategoryApi,
   deleteAdminCategoryApi,
@@ -7,6 +7,14 @@ import {
   updateAdminCategoryApi,
 } from "../../services/adminCategoryService";
 import AdminCategoryForm from "../../components/common/AdminCategoryForm";
+import AdminTableToolbar from "../../components/common/AdminTableToolbar";
+
+const normalizeText = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
 const ManageCategoriesPage = () => {
   const [categories, setCategories] = useState([]);
@@ -14,15 +22,14 @@ const ManageCategoriesPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-
       const response = await getAdminCategoriesApi();
       setCategories(response.data || []);
     } catch (error) {
@@ -38,6 +45,21 @@ const ManageCategoriesPage = () => {
     fetchCategories();
   }, []);
 
+  const filteredCategories = useMemo(() => {
+    const keyword = normalizeText(searchTerm);
+    if (!keyword) return categories;
+
+    return categories.filter((category) =>
+      [
+        category.id,
+        category.name,
+        category.slug,
+        category.description,
+        category.isActive ? "hoạt động" : "ẩn",
+      ].some((value) => normalizeText(value).includes(keyword))
+    );
+  }, [categories, searchTerm]);
+
   const handleCreateClick = () => {
     setEditingCategory(null);
     setShowForm(true);
@@ -49,7 +71,6 @@ const ManageCategoriesPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       const response = await getAdminCategoryDetailApi(id);
       setEditingCategory(response.data);
       setShowForm(true);
@@ -67,7 +88,6 @@ const ManageCategoriesPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       await deleteAdminCategoryApi(id);
       setSuccessMessage("Xóa danh mục thành công");
       fetchCategories();
@@ -111,23 +131,16 @@ const ManageCategoriesPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">
-            Quản lý danh mục
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Thêm, sửa, xóa danh mục sản phẩm
-          </p>
-        </div>
-
-        <button
-          onClick={handleCreateClick}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
-        >
-          Thêm danh mục
-        </button>
-      </div>
+      <AdminTableToolbar
+        title="Quản lý danh mục"
+        description="Thêm, sửa, xóa danh mục sản phẩm"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Tìm theo tên, slug, mô tả, trạng thái..."
+        createLabel="Thêm danh mục"
+        onCreateClick={handleCreateClick}
+        resultCount={filteredCategories.length}
+      />
 
       {successMessage && (
         <div className="rounded-xl bg-green-100 p-4 text-green-700 shadow">
@@ -158,47 +171,47 @@ const ManageCategoriesPage = () => {
 
       <div className="overflow-hidden rounded-2xl bg-white shadow">
         {loading ? (
-          <div className="p-6">Đang tải danh sách danh mục...</div>
-        ) : categories.length === 0 ? (
-          <div className="p-6 text-slate-500">Chưa có danh mục nào.</div>
+          <div className="p-6 text-slate-500">Đang tải danh sách danh mục...</div>
+        ) : filteredCategories.length === 0 ? (
+          <div className="p-6 text-slate-500">
+            {searchTerm ? "Không tìm thấy danh mục phù hợp." : "Chưa có danh mục nào."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100">
+              <thead className="bg-slate-100 text-left text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-                  <th className="px-4 py-3 text-left">Tên</th>
-                  <th className="px-4 py-3 text-left">Slug</th>
-                  <th className="px-4 py-3 text-left">Mô tả</th>
-                  <th className="px-4 py-3 text-left">Trạng thái</th>
-                  <th className="px-4 py-3 text-left">Hành động</th>
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">Tên</th>
+                  <th className="px-4 py-3">Slug</th>
+                  <th className="px-4 py-3">Mô tả</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Hành động</th>
                 </tr>
               </thead>
 
               <tbody>
-                {categories.map((category) => (
+                {filteredCategories.map((category) => (
                   <tr key={category.id} className="border-t border-slate-200">
                     <td className="px-4 py-3">{category.id}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">
                       {category.name}
                     </td>
                     <td className="px-4 py-3">{category.slug}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {category.description || "-"}
-                    </td>
+                    <td className="px-4 py-3">{category.description || "-"}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           category.isActive
                             ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
+                            : "bg-slate-200 text-slate-600"
                         }`}
                       >
                         {category.isActive ? "Hoạt động" : "Ẩn"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleEditClick(category.id)}
                           className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"

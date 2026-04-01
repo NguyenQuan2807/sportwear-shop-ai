@@ -1,7 +1,13 @@
 import axiosClient from "../api/axiosClient";
 
-export const getAdminProductsApi = () => {
-  return axiosClient.get("/api/admin/products");
+export const getAdminProductsApi = (filters = {}) => {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(
+      ([, value]) => value !== "" && value !== null && value !== undefined
+    )
+  );
+
+  return axiosClient.get("/api/admin/products", { params });
 };
 
 export const getAdminProductDetailApi = (id) => {

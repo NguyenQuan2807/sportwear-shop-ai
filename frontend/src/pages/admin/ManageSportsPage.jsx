@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createAdminSportApi,
   deleteAdminSportApi,
@@ -7,6 +7,14 @@ import {
   updateAdminSportApi,
 } from "../../services/adminSportService";
 import AdminSportForm from "../../components/common/AdminSportForm";
+import AdminTableToolbar from "../../components/common/AdminTableToolbar";
+
+const normalizeText = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
 const ManageSportsPage = () => {
   const [sports, setSports] = useState([]);
@@ -14,15 +22,14 @@ const ManageSportsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
   const [showForm, setShowForm] = useState(false);
   const [editingSport, setEditingSport] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchSports = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-
       const response = await getAdminSportsApi();
       setSports(response.data || []);
     } catch (error) {
@@ -38,6 +45,22 @@ const ManageSportsPage = () => {
     fetchSports();
   }, []);
 
+  const filteredSports = useMemo(() => {
+    const keyword = normalizeText(searchTerm);
+    if (!keyword) return sports;
+
+    return sports.filter((sport) =>
+      [
+        sport.id,
+        sport.name,
+        sport.slug,
+        sport.description,
+        sport.iconUrl,
+        sport.isActive ? "hoạt động" : "ẩn",
+      ].some((value) => normalizeText(value).includes(keyword))
+    );
+  }, [sports, searchTerm]);
+
   const handleCreateClick = () => {
     setEditingSport(null);
     setShowForm(true);
@@ -49,7 +72,6 @@ const ManageSportsPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       const response = await getAdminSportDetailApi(id);
       setEditingSport(response.data);
       setShowForm(true);
@@ -67,7 +89,6 @@ const ManageSportsPage = () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-
       await deleteAdminSportApi(id);
       setSuccessMessage("Xóa môn thể thao thành công");
       fetchSports();
@@ -111,19 +132,16 @@ const ManageSportsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">Quản lý môn thể thao</h1>
-          <p className="mt-2 text-slate-500">Thêm, sửa, xóa môn thể thao</p>
-        </div>
-
-        <button
-          onClick={handleCreateClick}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
-        >
-          Thêm môn thể thao
-        </button>
-      </div>
+      <AdminTableToolbar
+        title="Quản lý môn thể thao"
+        description="Thêm, sửa, xóa môn thể thao"
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        placeholder="Tìm theo tên, slug, icon URL, mô tả..."
+        createLabel="Thêm môn thể thao"
+        onCreateClick={handleCreateClick}
+        resultCount={filteredSports.length}
+      />
 
       {successMessage && (
         <div className="rounded-xl bg-green-100 p-4 text-green-700 shadow">
@@ -154,32 +172,36 @@ const ManageSportsPage = () => {
 
       <div className="overflow-hidden rounded-2xl bg-white shadow">
         {loading ? (
-          <div className="p-6">Đang tải danh sách môn thể thao...</div>
-        ) : sports.length === 0 ? (
-          <div className="p-6 text-slate-500">Chưa có môn thể thao nào.</div>
+          <div className="p-6 text-slate-500">Đang tải danh sách môn thể thao...</div>
+        ) : filteredSports.length === 0 ? (
+          <div className="p-6 text-slate-500">
+            {searchTerm
+              ? "Không tìm thấy môn thể thao phù hợp."
+              : "Chưa có môn thể thao nào."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100">
+              <thead className="bg-slate-100 text-left text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-                  <th className="px-4 py-3 text-left">Tên</th>
-                  <th className="px-4 py-3 text-left">Slug</th>
-                  <th className="px-4 py-3 text-left">Mô tả</th>
-                  <th className="px-4 py-3 text-left">Icon URL</th>
-                  <th className="px-4 py-3 text-left">Trạng thái</th>
-                  <th className="px-4 py-3 text-left">Hành động</th>
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">Tên</th>
+                  <th className="px-4 py-3">Slug</th>
+                  <th className="px-4 py-3">Mô tả</th>
+                  <th className="px-4 py-3">Icon URL</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Hành động</th>
                 </tr>
               </thead>
 
               <tbody>
-                {sports.map((sport) => (
+                {filteredSports.map((sport) => (
                   <tr key={sport.id} className="border-t border-slate-200">
                     <td className="px-4 py-3">{sport.id}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{sport.name}</td>
                     <td className="px-4 py-3">{sport.slug}</td>
-                    <td className="px-4 py-3 text-slate-600">{sport.description || "-"}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3">{sport.description || "-"}</td>
+                    <td className="px-4 py-3">
                       {sport.iconUrl ? (
                         <a
                           href={sport.iconUrl}
@@ -195,17 +217,17 @@ const ManageSportsPage = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           sport.isActive
                             ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
+                            : "bg-slate-200 text-slate-600"
                         }`}
                       >
                         {sport.isActive ? "Hoạt động" : "Ẩn"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleEditClick(sport.id)}
                           className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"

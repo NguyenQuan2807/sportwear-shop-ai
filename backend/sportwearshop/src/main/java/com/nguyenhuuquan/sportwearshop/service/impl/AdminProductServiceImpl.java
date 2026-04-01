@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
 import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductResponse;
@@ -16,11 +17,14 @@ import com.nguyenhuuquan.sportwearshop.repository.OrderItemRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductRepository;
 import com.nguyenhuuquan.sportwearshop.repository.SportRepository;
 import com.nguyenhuuquan.sportwearshop.service.AdminProductService;
+import com.nguyenhuuquan.sportwearshop.specification.ProductSpecification;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 @Service
 public class AdminProductServiceImpl implements AdminProductService {
@@ -49,17 +53,46 @@ public class AdminProductServiceImpl implements AdminProductService {
     }
 
     @Override
-    public List<AdminProductResponse> getAllProducts() {
-        return productRepository.findAll()
+    public List<AdminProductResponse> getAllProducts(
+            String keyword,
+            Long categoryId,
+            Long brandId,
+            Long sportId,
+            Gender gender,
+            Boolean isActive,
+            String sort
+    ) {
+        Specification<Product> specification = Specification
+                .where(ProductSpecification.hasKeyword(keyword))
+                .and(ProductSpecification.hasCategoryId(categoryId))
+                .and(ProductSpecification.hasBrandId(brandId))
+                .and(ProductSpecification.hasSportId(sportId))
+                .and(ProductSpecification.hasGender(gender))
+                .and(ProductSpecification.hasActiveStatus(isActive));
+
+        return productRepository.findAll(specification, buildSort(sort))
                 .stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    private Sort buildSort(String sort) {
+        String sortValue = sort == null ? "newest" : sort.trim().toLowerCase(Locale.ROOT);
+
+        return switch (sortValue) {
+            case "oldest" -> Sort.by(Sort.Direction.ASC, "createdAt");
+            case "name_asc" -> Sort.by(Sort.Direction.ASC, "name");
+            case "name_desc" -> Sort.by(Sort.Direction.DESC, "name");
+            case "updated_desc" -> Sort.by(Sort.Direction.DESC, "updatedAt");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
     }
 
     @Override
     public AdminProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+
         return mapToResponse(product);
     }
 
@@ -71,8 +104,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
+
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
+
         Sport sport = sportRepository.findById(request.getSportId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
@@ -98,8 +133,10 @@ public class AdminProductServiceImpl implements AdminProductService {
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy category"));
+
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy brand"));
+
         Sport sport = sportRepository.findById(request.getSportId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sport"));
 
@@ -112,7 +149,10 @@ public class AdminProductServiceImpl implements AdminProductService {
         product.setGender(request.getGender());
         product.setMaterial(request.getMaterial());
         product.setThumbnailUrl(request.getThumbnailUrl());
-        product.setIsActive(request.getIsActive());
+
+        if (request.getIsActive() != null) {
+            product.setIsActive(request.getIsActive());
+        }
 
         return mapToResponse(productRepository.save(product));
     }
@@ -129,12 +169,10 @@ public class AdminProductServiceImpl implements AdminProductService {
             product.setIsActive(false);
             productRepository.save(product);
 
-            // xóa khỏi giỏ hàng để không ai mua tiếp
             cartItemRepository.deleteByProductVariantProductId(id);
             return;
         }
 
-        // chưa từng có đơn hàng thì có thể xóa cứng
         cartItemRepository.deleteByProductVariantProductId(id);
         productRepository.delete(product);
     }

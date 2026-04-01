@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.service;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.AdminProductResponse;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.CreateProductRequest;
 import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductRequest;
@@ -7,9 +8,22 @@ import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductRequest;
 import java.util.List;
 
 public interface AdminProductService {
-    List<AdminProductResponse> getAllProducts();
+
+    List<AdminProductResponse> getAllProducts(
+            String keyword,
+            Long categoryId,
+            Long brandId,
+            Long sportId,
+            Gender gender,
+            Boolean isActive,
+            String sort
+    );
+
     AdminProductResponse getProductById(Long id);
+
     AdminProductResponse createProduct(CreateProductRequest request);
+
     AdminProductResponse updateProduct(Long id, UpdateProductRequest request);
+
     void deleteProduct(Long id);
 }

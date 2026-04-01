@@ -7,8 +7,12 @@ import com.nguyenhuuquan.sportwearshop.dto.adminproduct.UpdateProductImageReques
 import java.util.List;
 
 public interface AdminProductImageService {
+
     List<AdminProductImageResponse> getImagesByProductId(Long productId);
+
     AdminProductImageResponse createImage(Long productId, CreateProductImageRequest request);
+
     AdminProductImageResponse updateImage(Long imageId, UpdateProductImageRequest request);
+
     void deleteImage(Long imageId);
 }

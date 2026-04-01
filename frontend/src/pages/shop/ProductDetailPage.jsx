@@ -39,18 +39,12 @@ const ProductDetailPage = () => {
       setProduct(data);
 
       if (data?.variants?.length > 0) {
-        setSelectedVariant(data.variants[0]);
-      }
-
-      if (data?.images?.length > 0) {
-        const sortedImages = [...data.images].sort(
-          (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
-        );
-        const thumbnail =
-          sortedImages.find((item) => item.isThumbnail) || sortedImages[0];
-        setSelectedImage(thumbnail?.imageUrl || "");
+        const defaultVariant =
+          data.variants.find((item) => Number(item.stockQuantity || 0) > 0) ||
+          data.variants[0];
+        setSelectedVariant(defaultVariant);
       } else {
-        setSelectedImage(data?.thumbnailUrl || "");
+        setSelectedVariant(null);
       }
     } catch (error) {
       const backendMessage =
@@ -69,6 +63,55 @@ const ProductDetailPage = () => {
     setQuantity(1);
     setSuccessMessage("");
   }, [selectedVariant]);
+
+  const filteredImages = useMemo(() => {
+  if (!product?.images?.length) return [];
+
+  const currentColor = String(selectedVariant?.color || "").trim().toLowerCase();
+
+  if (!currentColor) {
+    return [...product.images].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
+
+  const exactColorImages = product.images.filter(
+    (image) =>
+      String(image.color || "").trim().toLowerCase() === currentColor
+  );
+
+  if (exactColorImages.length > 0) {
+    return [...exactColorImages].sort(
+      (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+    );
+  }
+
+  const commonImages = product.images.filter(
+    (image) => !String(image.color || "").trim()
+  );
+
+  return [...commonImages].sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+  );
+  }, [product?.images, selectedVariant?.color]);
+
+  useEffect(() => {
+  if (!filteredImages.length) {
+    setSelectedImage(product?.thumbnailUrl || "");
+    return;
+  }
+
+  const stillExists = filteredImages.some(
+    (image) => image.imageUrl === selectedImage
+  );
+
+  if (stillExists) {
+    return;
+  }
+
+  const thumbnail =
+    filteredImages.find((image) => image.isThumbnail) || filteredImages[0];
+
+  setSelectedImage(thumbnail?.imageUrl || "");
+  }, [filteredImages, selectedImage, product?.thumbnailUrl]);
 
   const maxQuantity = useMemo(() => {
     return selectedVariant?.stockQuantity || 1;
@@ -205,7 +248,7 @@ const ProductDetailPage = () => {
         <div className="space-y-6">
           <div className="overflow-hidden rounded-[32px] border border-slate-200/70 bg-white p-4 shadow-lg shadow-slate-200/50">
             <ProductImageGallery
-              images={product.images || []}
+              images={filteredImages}
               selectedImage={selectedImage}
               onSelectImage={setSelectedImage}
             />

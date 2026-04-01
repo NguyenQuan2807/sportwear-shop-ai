@@ -21,6 +21,9 @@ public class ProductImage extends BaseEntity {
     @Column(name = "image_url", nullable = false)
     private String imageUrl;
 
+    @Column(name = "color")
+    private String color;
+
     @Column(name = "is_thumbnail")
     private Boolean isThumbnail = false;
 
