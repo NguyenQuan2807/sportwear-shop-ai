@@ -31,7 +31,8 @@ public class SecurityConfig {
                                 "/api/sports/**",
                                 "/api/categories/**",
                                 "/api/brands/**",
-                                "/uploads/**"
+                                "/uploads/**",
+                                "/api/promotions/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

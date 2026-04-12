@@ -36,8 +36,7 @@ public class AdminSportController {
     }
 
     @PutMapping("/{id}")
-    public SportResponse updateSport(@PathVariable Long id,
-                                     @Valid @RequestBody UpdateSportRequest request) {
+    public SportResponse updateSport(@PathVariable Long id, @Valid @RequestBody UpdateSportRequest request) {
         return sportService.updateSport(id, request);
     }
 

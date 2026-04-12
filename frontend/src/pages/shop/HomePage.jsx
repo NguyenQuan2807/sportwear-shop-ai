@@ -1,13 +1,85 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import axiosClient from "../../api/axiosClient";
 import { getSportsApi } from "../../services/sportService";
+import { getProductsApi } from "../../services/productService";
 
-// Khi bạn có video thật, chỉ cần import vào đây:
-// import heroVideo from "../../assets/home-hero.mp4";
+const HERO_IMAGE = "/images/home/banner1.jpg";
+const HEADER_HEIGHT = 72;
+const PROMOTION_BAR_HEIGHT = HEADER_HEIGHT;
+const PROMOTION_ROTATE_MS = 5000;
+const TOP_THRESHOLD = 16;
+const SPORTS_VISIBLE_COUNT = 7;
 
-const heroVideo = ""; // sau này thay bằng file video thật của bạn
-const heroFallbackImage =
-  "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1800&q=80";
+const fallbackSpotlightItems = [
+  {
+    id: 1,
+    image: "/images/campaign-shoes.jpg",
+    tag: "12 sản phẩm",
+    title: "Nike",
+    description: "Khám phá bộ sưu tập thể thao nổi bật với tinh thần hiện đại, mạnh mẽ và linh hoạt cho mọi chuyển động.",
+    link: "/products",
+  },
+  {
+    id: 2,
+    image: "/images/campaign-basketball.jpg",
+    tag: "10 sản phẩm",
+    title: "Adidas",
+    description: "Thiết kế hiệu suất cao, tối ưu cho vận động hàng ngày từ tập luyện đến phong cách thể thao đường phố.",
+    link: "/products",
+  },
+  {
+    id: 3,
+    image: "/images/campaign-wellness.jpg",
+    tag: "8 sản phẩm",
+    title: "Puma",
+    description: "Phong cách năng động với chất liệu thoải mái, phù hợp cho nhiều bộ môn và nhịp sống hiện đại.",
+    link: "/products",
+  },
+];
+
+const campaignItems = [
+  {
+    id: 1,
+    image: "/images/home/campaign7.png",
+    title: "Air Force 1",
+    subtitle: "Biểu tượng bất tử",
+    textClass: "text-white",
+    overlay: "bg-black/35",
+    link: "/products",
+  },
+  {
+    id: 2,
+    image: "/images/home/campaign2.jpg",
+    title: "Pegasus",
+    subtitle: "Chạy với sự tin tưởng",
+    textClass: "text-white",
+    overlay: "bg-black/35",
+    link: "/products",
+  },
+  {
+    id: 3,
+    image: "/images/home/campaign3.jpg",
+    title: "Revolution",
+    subtitle: "Tuyên bố của bạn",
+    textClass: "text-white",
+    overlay: "bg-black/30",
+    link: "/products",
+  },
+];
+
+
+const fallbackSports = [
+  { id: "running", name: "Running", productCount: 11 },
+  { id: "football", name: "Football", productCount: 14 },
+  { id: "gym", name: "Gym", productCount: 9 },
+  { id: "yoga", name: "Yoga", productCount: 8 },
+  { id: "basketball", name: "Basketball", productCount: 12 },
+  { id: "tennis", name: "Tennis", productCount: 7 },
+  { id: "badminton", name: "Badminton", productCount: 10 },
+  { id: "training", name: "Training", productCount: 13 },
+  { id: "lifestyle", name: "Lifestyle", productCount: 6 },
+];
 
 const sportImageMap = {
   football:
@@ -25,274 +97,711 @@ const sportImageMap = {
     "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80",
   training:
     "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=80",
+  lifestyle:
+    "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
   default:
     "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=80",
 };
 
-const featuredBrands = [
-  {
-    name: "Nike",
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80",
-    link: "/products?brand=Nike",
-  },
-  {
-    name: "Adidas",
-    image:
-      "https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&w=1200&q=80",
-    link: "/products?brand=Adidas",
-  },
-  {
-    name: "Puma",
-    image:
-      "https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?auto=format&fit=crop&w=1200&q=80",
-    link: "/products?brand=Puma",
-  },
-  {
-    name: "Under Armour",
-    image:
-      "https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=1200&q=80",
-    link: "/products?brand=Under Armour",
-  },
-];
 
-const editorialSections = [
-  {
-    title: "Built for speed",
-    image:
-      "https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=1800&q=80",
-    link: "/products",
-    height: "tall",
-  },
-  {
-    title: "Train with intent",
-    image:
-      "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1800&q=80",
-    link: "/products",
-    height: "medium",
-  },
-  {
-    title: "Move in style",
-    image:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1800&q=80",
-    link: "/products",
-    height: "medium",
-  },
-];
+function resolveSportImageByName(name = "") {
+  const normalized = String(name).trim().toLowerCase();
+  return (
+    sportImageMap[normalized] ||
+    Object.entries(sportImageMap).find(([key]) => normalized.includes(key))?.[1] ||
+    sportImageMap.default
+  );
+}
 
-const HomePage = () => {
+function resolveSportCardImage(sport) {
+  return sport?.imageUrl || resolveSportImageByName(sport?.name);
+}
+
+
+
+function isPromotionAvailable(promotion, now = new Date()) {
+  if (!promotion || promotion.isActive === false) return false;
+
+  if (promotion.status && !["ACTIVE", "SCHEDULED"].includes(String(promotion.status).toUpperCase())) {
+    return false;
+  }
+
+  const startTime = promotion.startTime ? new Date(promotion.startTime) : null;
+  const endTime = promotion.endTime ? new Date(promotion.endTime) : null;
+
+  if (startTime && Number.isFinite(startTime.getTime()) && now < startTime) return false;
+  if (endTime && Number.isFinite(endTime.getTime()) && now > endTime) return false;
+
+  return true;
+}
+
+function formatPromotionHeadline(promotion) {
+  if (!promotion) return "";
+
+  const discountValue = Number(promotion.discountValue);
+  const discountText = Number.isFinite(discountValue)
+    ? promotion.discountType === "PERCENT"
+      ? `Giảm ${discountValue}%`
+      : promotion.discountType === "FIXED_AMOUNT"
+        ? `Giảm ${discountValue.toLocaleString("vi-VN")}đ`
+        : promotion.discountType === "FIXED_PRICE"
+          ? `Chỉ còn ${discountValue.toLocaleString("vi-VN")}đ`
+          : ""
+    : "";
+
+  if (discountText) {
+    return `${promotion.name} • ${discountText}`;
+  }
+
+  return promotion.name || "Ưu đãi nổi bật";
+}
+
+function resolveSportProductCount(sport) {
+  if (!sport) return null;
+
+  const countCandidates = [
+    sport.productCount,
+    sport.productsCount,
+    sport.totalProducts,
+    sport.totalProduct,
+    sport.productTotal,
+    sport.totalItems,
+    sport.itemCount,
+  ];
+
+  for (const candidate of countCandidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  if (Array.isArray(sport.products)) {
+    return sport.products.length;
+  }
+
+  return null;
+}
+
+function resolveBrandImage(brand) {
+  return (
+    brand?.bannerImageUrl ||
+    brand?.coverImageUrl ||
+    brand?.imageUrl ||
+    brand?.logoUrl ||
+    "/images/campaign-shoes.jpg"
+  );
+}
+
+function resolveBrandDescription(brand) {
+  if (brand?.description && String(brand.description).trim()) {
+    return brand.description;
+  }
+
+  return "Khám phá bộ sưu tập nổi bật của thương hiệu này trên Sportwear Shop.";
+}
+
+function formatCurrency(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  return `${number.toLocaleString("vi-VN")}đ`;
+}
+
+function resolveProductPrice(product) {
+  const priorityPrices = [
+    product?.flashSalePrice,
+    product?.promotionPrice,
+    product?.salePrice,
+    product?.finalPrice,
+    product?.minPrice,
+    product?.price,
+  ];
+
+  for (const candidate of priorityPrices) {
+    const formatted = formatCurrency(candidate);
+    if (formatted) return formatted;
+  }
+
+  const minPrice = Number(product?.minPrice);
+  const maxPrice = Number(product?.maxPrice);
+
+  if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
+    if (minPrice === maxPrice) {
+      return `${minPrice.toLocaleString("vi-VN")}đ`;
+    }
+    return `Từ ${minPrice.toLocaleString("vi-VN")}đ`;
+  }
+
+  return "Liên hệ";
+}
+
+function resolveProductImage(product) {
+  return (
+    product?.thumbnailUrl ||
+    product?.imageUrl ||
+    product?.thumbnail ||
+    "/images/campaign-shoes.jpg"
+  );
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-10 w-10">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16v12H4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
+    </svg>
+  );
+}
+
+function HomePage() {
   const [sports, setSports] = useState([]);
-  const sportsRailRef = useRef(null);
+  const [sportsError, setSportsError] = useState(false);
+  const [promotions, setPromotions] = useState([]);
+  const [promotionIndex, setPromotionIndex] = useState(0);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [sportStartIndex, setSportStartIndex] = useState(0);
+  const [topBrands, setTopBrands] = useState([]);
+  const [brandsError, setBrandsError] = useState(false);
+  const [newProducts, setNewProducts] = useState([]);
+  const [newProductsLoading, setNewProductsLoading] = useState(true);
+  const productRailRef = useRef(null);
 
   useEffect(() => {
     const fetchSports = async () => {
       try {
         const response = await getSportsApi();
-        setSports(response.data || []);
+        setSports(Array.isArray(response?.data) ? response.data : []);
       } catch (error) {
         console.error("Không thể tải danh sách môn thể thao", error);
+        setSportsError(true);
       }
     };
 
     fetchSports();
   }, []);
 
-  const scrollSports = (direction) => {
-    if (!sportsRailRef.current) return;
+  useEffect(() => {
+  const fetchNewProducts = async () => {
+    try {
+      setNewProductsLoading(true);
 
-    sportsRailRef.current.scrollBy({
-      left: direction === "left" ? -360 : 360,
+      const response = await getProductsApi({
+        page: 0,
+        size: 8,
+        sort: "newest",
+      });
+
+      const data = response?.data || {};
+      setNewProducts(Array.isArray(data.content) ? data.content : []);
+    } catch (error) {
+      console.error("Không thể tải sản phẩm mới", error);
+      setNewProducts([]);
+    } finally {
+      setNewProductsLoading(false);
+    }
+  };
+
+  fetchNewProducts();
+}, []);
+
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        const [activeResponse, fallbackResponse] = await Promise.allSettled([
+          axiosClient.get("/api/promotions/active"),
+          axiosClient.get("/api/promotions"),
+        ]);
+
+        const activeData =
+          activeResponse.status === "fulfilled" && Array.isArray(activeResponse.value?.data)
+            ? activeResponse.value.data
+            : null;
+
+        const fallbackData =
+          fallbackResponse.status === "fulfilled" && Array.isArray(fallbackResponse.value?.data)
+            ? fallbackResponse.value.data
+            : null;
+
+        const rawPromotions = activeData || fallbackData || [];
+        const now = new Date();
+
+        const availablePromotions = rawPromotions
+          .filter((promotion) => isPromotionAvailable(promotion, now))
+          .sort((a, b) => (Number(b?.priority) || 0) - (Number(a?.priority) || 0));
+
+        setPromotions(availablePromotions);
+      } catch (error) {
+        console.warn("Không thể tải promotion cho homepage", error);
+        setPromotions([]);
+      }
+    };
+
+    fetchPromotions();
+  }, []);
+
+  useEffect(() => {
+    const fetchTopBrands = async () => {
+      try {
+        const response = await axiosClient.get("/api/brands/top?limit=3");
+        const data = Array.isArray(response?.data) ? response.data : [];
+        setTopBrands(data);
+      } catch (error) {
+        console.warn("Không thể tải top thương hiệu", error);
+        setBrandsError(true);
+        setTopBrands([]);
+      }
+    };
+
+    fetchTopBrands();
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsAtTop(window.scrollY <= TOP_THRESHOLD);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (promotions.length <= 1) {
+      setPromotionIndex(0);
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setPromotionIndex((prev) => (prev + 1) % promotions.length);
+    }, PROMOTION_ROTATE_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [promotions]);
+
+  const displaySports = useMemo(() => {
+    if (sports.length > 0) return sports;
+    return fallbackSports;
+  }, [sports]);
+
+  const maxSportStartIndex = Math.max(0, displaySports.length - SPORTS_VISIBLE_COUNT);
+
+  useEffect(() => {
+    setSportStartIndex((prev) => Math.min(prev, maxSportStartIndex));
+  }, [maxSportStartIndex]);
+
+  const visibleSports = useMemo(() => {
+    return displaySports.slice(sportStartIndex, sportStartIndex + SPORTS_VISIBLE_COUNT);
+  }, [displaySports, sportStartIndex]);
+
+  const activePromotion = promotions[promotionIndex] || null;
+  const showPromotionBar = isAtTop && promotions.length > 0;
+  const heroHeight = `calc(100vh - ${HEADER_HEIGHT + (promotions.length > 0 ? PROMOTION_BAR_HEIGHT : 0)}px)`;
+  const sectionOuterClass = "px-3 py-16 sm:px-4 sm:py-20 lg:px-5 lg:py-24 xl:px-6";
+  const sectionInnerClass = "mx-auto w-full max-w-[1760px]";
+
+  const spotlightBrands = useMemo(() => {
+    if (!topBrands.length) return fallbackSpotlightItems;
+
+    return topBrands.map((brand) => ({
+      id: brand.id,
+      image: resolveBrandImage(brand),
+      tag: `${Number(brand.productCount) || 0} sản phẩm`,
+      title: brand.name || "Thương hiệu nổi bật",
+      description: resolveBrandDescription(brand),
+      link: typeof brand.id === "number" ? `/products?brandId=${brand.id}` : "/products",
+    }));
+  }, [topBrands]);
+
+  const handlePrevSport = () => {
+    setSportStartIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextSport = () => {
+    setSportStartIndex((prev) => Math.min(maxSportStartIndex, prev + 1));
+  };
+
+  const scrollProducts = (direction) => {
+    if (!productRailRef.current) return;
+    productRailRef.current.scrollBy({
+      left: direction === "left" ? -320 : 320,
       behavior: "smooth",
     });
   };
 
+  const handleNewsletterSubmit = (event) => {
+    event.preventDefault();
+    if (!email.trim()) return;
+    setSubmitted(true);
+    setEmail("");
+    window.setTimeout(() => setSubmitted(false), 3000);
+  };
+
   return (
-    <div className="bg-black text-white">
-      {/* HERO VIDEO */}
-      <section className="relative min-h-screen overflow-hidden">
-        {heroVideo ? (
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            src={heroVideo}
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-        ) : (
-          <img
-            src={heroFallbackImage}
-            alt="Hero"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        )}
-
-        <div className="absolute inset-0 bg-black/35" />
-
-        <div className="relative flex min-h-screen items-end">
-          <div className="w-full px-6 pb-10 sm:px-10 sm:pb-14 lg:px-16 lg:pb-16">
-            <Link
-              to="/products"
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3.5 text-sm font-bold text-black transition hover:bg-slate-100"
-            >
-              Mua ngay
-            </Link>
-          </div>
+    <div className="w-full bg-white text-black">
+      <div
+        className={`sticky top-0 z-30 overflow-hidden bg-black text-white transition-[max-height,opacity,transform] duration-300 ${
+          showPromotionBar ? "max-h-[72px] opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-2"
+        }`}
+      >
+        <div
+          className="flex items-center justify-center px-4 text-center sm:px-6 lg:px-8"
+          style={{ height: `${PROMOTION_BAR_HEIGHT}px` }}
+        >
+          {activePromotion ? (
+            <div className="flex w-full max-w-6xl items-center justify-center gap-3">
+              <p className="line-clamp-1 text-sm font-semibold tracking-[0.01em] text-white sm:text-base">
+                {formatPromotionHeadline(activePromotion)}
+              </p>
+              {promotions.length > 1 ? (
+                <span className="hidden text-xs text-white/55 sm:inline-flex">
+                  {promotionIndex + 1}/{promotions.length}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </section>
+      </div>
 
-      {/* SHOP BY SPORT */}
-      <section className="px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
-            Shop by sport
-          </h2>
-
-          <div className="hidden items-center gap-2 sm:flex">
-            <button
-              type="button"
-              onClick={() => scrollSports("left")}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-            >
-              <ArrowLeftIcon />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollSports("right")}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-            >
-              <ArrowRightIcon />
-            </button>
-          </div>
+      <section className="relative overflow-hidden bg-white" style={{ minHeight: heroHeight }}>
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${HERO_IMAGE})`,
+            backgroundPosition: "center",
+          }}
+        >
+          <div className="absolute inset-0 bg-black/25" />
         </div>
 
         <div
-          ref={sportsRailRef}
-          className="no-scrollbar flex gap-6 overflow-x-auto scroll-smooth py-2"
+          className="relative flex items-end px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8 lg:pb-28 xl:px-10"
+          style={{ minHeight: heroHeight }}
         >
-          {sports.map((sport) => (
-            <Link
-              key={sport.id}
-              to={`/products?sportId=${sport.id}`}
-              className="group flex min-w-[110px] flex-col items-center sm:min-w-[120px] lg:min-w-[140px]"
-            >
-              <div className="h-24 w-24 overflow-hidden rounded-[18px] bg-zinc-900 sm:h-28 sm:w-28 lg:h-32 lg:w-32">
-                <img
-                  src={resolveSportImage(sport.name)}
-                  alt={sport.name}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-              </div>
+          <div className="max-w-2xl text-white">
+            <h1 className="text-5xl font-black leading-[0.95] sm:text-6xl lg:text-7xl">
+              Vượt qua
+              <br />
+              giới hạn
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+              Khám phá thời trang thể thao hiện đại với nhịp điệu mạnh mẽ và trải nghiệm mua sắm cao cấp.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link
+                to="/products"
+                className="inline-flex items-center rounded-full bg-black px-8 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 sm:px-10 sm:py-4 sm:text-base"
+              >
+                Mua ngay
+              </Link>
+              <Link
+                to="/products"
+                className="inline-flex items-center rounded-full border border-white/60 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white hover:text-black sm:px-10 sm:py-4 sm:text-base"
+              >
+                Khám phá thêm
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              <p className="mt-3 text-center text-sm font-bold tracking-tight text-white sm:text-base">
-                {sport.name}
+      <section className={`bg-white ${sectionOuterClass}`}>
+        <div className={sectionInnerClass}>
+          <div className="mb-8 flex flex-col gap-5 sm:mb-10 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
+                Shop by sport
               </p>
-            </Link>
-          ))}
+              <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-5xl">
+                Mua sắm theo môn thể thao
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-3 self-start lg:self-auto">
+              <button
+                type="button"
+                onClick={handlePrevSport}
+                disabled={sportStartIndex === 0}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
+                aria-label="Hiện môn thể thao trước"
+              >
+                <ArrowLeftIcon />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextSport}
+                disabled={sportStartIndex >= maxSportStartIndex}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
+                aria-label="Hiện môn thể thao tiếp theo"
+              >
+                <ArrowRightIcon />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-7 lg:gap-5 xl:gap-6">
+            {visibleSports.map((sport) => {
+              const productCount = resolveSportProductCount(sport);
+              return (
+                <Link
+                  key={sport.id}
+                  to={typeof sport.id === "number" ? `/products?sportId=${sport.id}` : "/products"}
+                  className="group block transition hover:-translate-y-1"
+                >
+                  <div className="aspect-[4/5] overflow-hidden bg-zinc-200">
+                    <img
+                      src={resolveSportCardImage(sport)}
+                      alt={sport.name}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="pt-4 text-center">
+                    <p className="text-sm font-semibold text-black sm:text-[15px] lg:text-base">{sport.name}</p>
+                    <p className="mt-2 text-xs font-medium text-zinc-500 sm:text-sm">
+                      {productCount !== null ? `${productCount} sản phẩm` : "Đang cập nhật"}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {sportsError && sports.length === 0 ? (
+            <p className="mt-5 text-sm text-zinc-500">
+              Không tải được môn thể thao từ API, đang hiển thị dữ liệu giao diện dự phòng.
+            </p>
+          ) : null}
         </div>
       </section>
 
-      {/* 4 LARGE SQUARES */}
-      <section className="px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {featuredBrands.map((item) => (
-            <Link
-              key={item.name}
-              to={item.link}
-              className="group relative overflow-hidden rounded-[24px] bg-zinc-900"
-            >
-              <div className="aspect-square overflow-hidden">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-              </div>
+      <section className={`bg-white ${sectionOuterClass}`}>
+        <div className={sectionInnerClass}>
+          <div className="mb-12 text-center sm:mb-16">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
+              Spotlight
+            </p>
+            <h2 className="text-4xl font-black tracking-tight text-black sm:text-5xl lg:text-6xl">
+              Nổi bật
+            </h2>
+          </div>
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
+            {spotlightBrands.map((item) => (
+              <Link key={item.id} to={item.link} className="group block">
+                <div className="relative mb-6 h-80 overflow-hidden bg-zinc-100 sm:h-96 lg:h-[500px]">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-zinc-500 sm:text-sm">
+                  Thương hiệu
+                </p>
+                <h3 className="mb-3 text-2xl font-bold text-black sm:text-3xl">{item.title}</h3>
+                <p className="mb-3 text-sm font-semibold text-zinc-500">{item.tag}</p>
+                <p className="text-sm leading-7 text-zinc-600 sm:text-base">{item.description}</p>
+                <span className="mt-4 inline-flex text-sm font-semibold text-black transition group-hover:translate-x-1">
+                  Khám phá →
+                </span>
+              </Link>
+            ))}
+          </div>
 
-              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                <LinkButton label="Xem sản phẩm" />
-              </div>
-            </Link>
-          ))}
+          {brandsError && topBrands.length === 0 ? (
+            <p className="mt-5 text-center text-sm text-zinc-500">
+              Không tải được dữ liệu thương hiệu từ API, đang hiển thị nội dung giao diện dự phòng.
+            </p>
+          ) : null}
         </div>
       </section>
 
-      {/* EDITORIAL BANNERS */}
-      <section className="px-0 py-12 lg:py-16">
-        <div className="grid gap-0 md:grid-cols-3 md:h-[78vh]">
-          {editorialSections.map((section) => (
-            <Link
-              key={section.title}
-              to={section.link}
-              className="group relative block overflow-hidden bg-zinc-900"
-            >
-              <div className="relative min-h-[320px] md:h-full">
-                <img
-                  src={section.image}
-                  alt={section.title}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <section className={`bg-white ${sectionOuterClass}`}>
+        <div className={sectionInnerClass}>
+          <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0">
+            <Link to={campaignItems[0].link} className="group relative block min-h-[420px] overflow-hidden lg:min-h-[640px]">
+              <img
+                src={campaignItems[0].image}
+                alt={campaignItems[0].title}
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              />
+              <div className={`absolute inset-0 ${campaignItems[0].overlay} transition duration-500 group-hover:bg-black/45`} />
+              <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8 lg:p-12">
+                <p className={`mb-3 text-xs font-bold uppercase tracking-[0.24em] ${campaignItems[0].textClass}/80`}>
+                  Campaign
+                </p>
+                <h3 className={`text-4xl font-black ${campaignItems[0].textClass} sm:text-5xl lg:text-6xl`}>
+                  {campaignItems[0].title}
+                </h3>
+                <p className={`mt-2 text-lg ${campaignItems[0].textClass}/90 sm:text-xl`}>
+                  {campaignItems[0].subtitle}
+                </p>
+              </div>
+            </Link>
 
-                <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8 lg:p-10">
-                  <h3 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-                    {section.title}
+            <div className="space-y-8">
+              {campaignItems.slice(1).map((item) => (
+                <Link key={item.id} to={item.link} className="group relative block h-80 overflow-hidden sm:h-96">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                  <div className={`absolute inset-0 ${item.overlay} transition duration-500 group-hover:bg-black/45`} />
+                  <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8">
+                    <p className={`mb-2 text-xs font-bold uppercase tracking-[0.24em] ${item.textClass}/80`}>
+                      Campaign
+                    </p>
+                    <h3 className={`text-2xl font-black ${item.textClass} sm:text-3xl lg:text-4xl`}>
+                      {item.title}
+                    </h3>
+                    <p className={`mt-2 text-base ${item.textClass}/90 sm:text-lg`}>{item.subtitle}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={`bg-zinc-50 ${sectionOuterClass}`}>
+        <div className={sectionInnerClass}>
+          <div className="mb-12 flex items-end justify-between gap-6 sm:mb-16">
+            <div>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
+                New arrivals
+              </p>
+              <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-5xl">
+                Sản phẩm mới
+              </h2>
+            </div>
+            <div className="hidden gap-3 sm:flex">
+              <button
+                type="button"
+                onClick={() => scrollProducts("left")}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800"
+                aria-label="Cuộn trái"
+              >
+                <ArrowLeftIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollProducts("right")}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800"
+                aria-label="Cuộn phải"
+              >
+                <ArrowRightIcon />
+              </button>
+            </div>
+          </div>
+
+          {newProductsLoading ? (
+            <div
+              ref={productRailRef}
+              className="flex gap-6 overflow-x-auto pb-4 [scrollbar-width:none]"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="block w-64 flex-shrink-0 sm:w-80">
+                  <div className="relative mb-4 h-64 animate-pulse overflow-hidden bg-zinc-200 sm:h-80" />
+                  <div className="h-5 w-3/4 animate-pulse bg-zinc-200" />
+                  <div className="mt-2 h-4 w-28 animate-pulse bg-zinc-200" />
+                  <div className="mt-4 h-12 animate-pulse rounded-xl bg-zinc-200" />
+                </div>
+              ))}
+            </div>
+          ) : newProducts.length === 0 ? (
+            <div className="bg-white px-6 py-12 text-center text-zinc-500">
+              Chưa có sản phẩm mới để hiển thị.
+            </div>
+          ) : (
+            <div
+              ref={productRailRef}
+              className="flex gap-6 overflow-x-auto pb-4 [scrollbar-width:none]"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {newProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/products/${product.id}`}
+                  className="group flex w-64 flex-shrink-0 flex-col sm:w-80"
+                >
+                  <div className="relative mb-4 h-64 overflow-hidden bg-zinc-200 sm:h-80">
+                    <img
+                      src={resolveProductImage(product)}
+                      alt={product?.name || "Sản phẩm"}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </div>
+
+                  <h3 className="line-clamp-2 min-h-[3rem] text-base font-semibold text-black sm:min-h-[3.5rem] sm:text-lg">
+                    {product?.name || "Sản phẩm"}
                   </h3>
 
-                  <div className="mt-5">
-                    <LinkButton label="Xem sản phẩm" />
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
+                  <p className="mt-2 text-sm font-medium text-zinc-600 sm:text-base">
+                    {resolveProductPrice(product)}
+                  </p>
+
+                  <span className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 sm:text-base">
+                    Xem sản phẩm
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className={`bg-black text-white ${sectionOuterClass}`}>
+        <div className="mx-auto w-full max-w-[1120px] text-center">
+          <div className="mb-4 flex justify-center text-white">
+            <MailIcon />
+          </div>
+          <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">Nhận tin khuyến mãi</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
+            Đăng ký để nhận thông tin về bộ sưu tập mới, ưu đãi nổi bật và cảm hứng thời trang thể thao mỗi tuần.
+          </p>
+
+          <form onSubmit={handleNewsletterSubmit} className="mt-8 flex flex-col gap-4 sm:flex-row">
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Nhập email của bạn"
+              className="h-14 w-full rounded-full border border-white/15 bg-white px-6 text-sm text-black outline-none transition placeholder:text-zinc-400 focus:border-white sm:text-base"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-14 shrink-0 items-center justify-center rounded-full bg-white px-8 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:text-base"
+            >
+              Đăng ký
+            </button>
+          </form>
+
+          {submitted ? (
+            <p className="mt-4 text-sm text-emerald-300">Đăng ký thành công. Cảm ơn bạn đã quan tâm.</p>
+          ) : null}
         </div>
       </section>
     </div>
-  );
-};
-
-const LinkButton = ({ label }) => (
-  <span className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-black transition group-hover:bg-slate-100">
-    {label}
-  </span>
-);
-
-const ArrowLeftIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-  </svg>
-);
-
-const ArrowRightIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5 15.75 12l-7.5 7.5" />
-  </svg>
-);
-
-function resolveSportImage(name = "") {
-  const normalized = String(name).trim().toLowerCase();
-
-  return (
-    sportImageMap[normalized] ||
-    Object.entries(sportImageMap).find(([key]) => normalized.includes(key))?.[1] ||
-    sportImageMap.default
   );
 }
 

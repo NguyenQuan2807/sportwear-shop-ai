@@ -10,6 +10,7 @@ public class SportResponse {
     private String name;
     private String slug;
     private String description;
-    private String iconUrl;
+    private String imageUrl;
+    private Long productCount;
     private Boolean isActive;
 }

@@ -21,8 +21,8 @@ public class Sport extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "icon_url")
-    private String iconUrl;
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(name = "is_active")
     private Boolean isActive = true;

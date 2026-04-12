@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import logo from "../../assets/logo.png";
+import { getCartApi } from "../../services/cartService";
 
 const productUrl = (params = {}) => {
   const search = new URLSearchParams(params).toString();
@@ -355,6 +356,8 @@ const navItems = [
   },
 ];
 
+const visibleNavItems = navItems.filter((item) => item.label !== "Tất cả sản phẩm");
+
 const Header = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -365,12 +368,16 @@ const Header = () => {
   const [mobileExpanded, setMobileExpanded] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
   const [query, setQuery] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     setMobileOpen(false);
     setMobileSearchOpen(false);
     setMobileExpanded(null);
     setActiveMenu(null);
+    setUserMenuOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -379,6 +386,7 @@ const Header = () => {
         setMobileOpen(false);
         setMobileSearchOpen(false);
         setMobileExpanded(null);
+        setUserMenuOpen(false);
       }
     };
 
@@ -386,16 +394,45 @@ const Header = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!user) {
+        setCartCount(0);
+        return;
+      }
+
+      try {
+        const response = await getCartApi();
+        const items = Array.isArray(response?.data?.items) ? response.data.items : [];
+        const totalQuantity = items.reduce((sum, item) => sum + Number(item?.quantity || 0), 0);
+        setCartCount(totalQuantity);
+      } catch (error) {
+        setCartCount(0);
+      }
+    };
+
+    fetchCartCount();
+  }, [user, location.pathname, location.search]);
+
   const activeMenuData = useMemo(
-    () => navItems.find((item) => item.label === activeMenu),
+    () => visibleNavItems.find((item) => item.label === activeMenu),
     [activeMenu]
   );
 
-  const accountPath = !user
-    ? "/login"
-    : user.roleName === "ADMIN"
-    ? "/admin"
-    : "/orders";
+  const orderPath = "/orders";
+  const adminPath = "/admin";
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -432,8 +469,6 @@ const Header = () => {
         return params.get("category") === "Phụ kiện";
       case "Sale":
         return params.get("sale") === "true";
-      case "Tất cả sản phẩm":
-        return !params.toString();
       default:
         return false;
     }
@@ -445,8 +480,8 @@ const Header = () => {
         className="relative border-b border-black/10"
         onMouseLeave={() => setActiveMenu(null)}
       >
-        <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto grid h-[72px] max-w-[1840px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-3 sm:px-4 lg:px-5 xl:px-6">
+          <div className="flex items-center justify-start gap-3 lg:pr-6">
             <button
               type="button"
               onClick={() => {
@@ -467,13 +502,13 @@ const Header = () => {
               <img
                 src={logo}
                 alt="Sportwear Logo"
-                className="h-10 w-auto object-contain sm:h-11"
+                className="h-11 w-auto object-contain sm:h-12"
               />
             </Link>
           </div>
 
-          <nav className="hidden lg:flex lg:items-center lg:gap-7">
-            {navItems.map((item) => (
+          <nav className="hidden lg:flex lg:items-center lg:justify-center lg:gap-5 xl:gap-6">
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
@@ -496,10 +531,10 @@ const Header = () => {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-1.5 xl:gap-2 lg:pl-8">
             <form
               onSubmit={handleSearchSubmit}
-              className="hidden lg:flex h-11 items-center rounded-full bg-slate-100 pl-4 pr-3"
+              className="hidden h-10 items-center rounded-full border border-black/10 bg-slate-50 pl-3 pr-3 lg:flex"
             >
               <SearchIcon className="h-5 w-5 text-slate-500" />
               <input
@@ -507,7 +542,7 @@ const Header = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Tìm kiếm"
-                className="h-full w-[180px] bg-transparent px-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 xl:w-[220px]"
+                className="h-full w-[110px] bg-transparent px-2 text-sm text-slate-900 outline-none placeholder:text-slate-500 xl:w-[130px]"
               />
             </form>
 
@@ -525,7 +560,7 @@ const Header = () => {
 
             <button
               type="button"
-              className="hidden h-11 w-11 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100 sm:inline-flex"
+              className="hidden h-10 w-10 items-center justify-center rounded-full border border-black/10 text-slate-900 transition hover:bg-slate-100 sm:inline-flex"
               aria-label="Yêu thích"
               title="Yêu thích"
             >
@@ -534,37 +569,90 @@ const Header = () => {
 
             <Link
               to="/cart"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-slate-900 transition hover:bg-slate-100"
               aria-label="Giỏ hàng"
               title="Giỏ hàng"
             >
               <BagIcon />
+              {cartCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              ) : null}
             </Link>
 
-            <Link
-              to={accountPath}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100"
-              aria-label={user ? user.fullName : "Đăng nhập"}
-              title={user ? user.fullName : "Đăng nhập"}
-            >
-              <UserIcon />
-            </Link>
-
-            {user && (
-              <button
-                type="button"
-                onClick={logout}
-                className="hidden rounded-full px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 xl:inline-flex"
+            {!user ? (
+              <Link
+                to="/login"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-slate-900 transition hover:bg-slate-100"
+                aria-label="Đăng nhập"
+                title="Đăng nhập"
               >
-                Đăng xuất
-              </button>
+                <UserIcon />
+              </Link>
+            ) : (
+              <div ref={userMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-slate-900 transition hover:bg-slate-100"
+                  aria-label={user.fullName || "Tài khoản"}
+                  title={user.fullName || "Tài khoản"}
+                >
+                  <UserIcon />
+                </button>
+
+                {userMenuOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-50 min-w-[180px] rounded-2xl border border-black/10 bg-white p-2 shadow-[0_20px_50px_rgba(15,23,42,0.12)]">
+                    <div className="border-b border-slate-100 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-900 line-clamp-1">
+                        {user.fullName || "Tài khoản"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {user.roleName === "ADMIN" ? "Quản trị viên" : "Tài khoản khách hàng"}
+                      </p>
+                    </div>
+
+                    <div className="mt-1 space-y-1">
+                      {user.roleName === "ADMIN" ? (
+                        <Link
+                          to={adminPath}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+                        >
+                          Quản lý
+                        </Link>
+                      ) : (
+                        <Link
+                          to={orderPath}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+                        >
+                          Đơn hàng của tôi
+                        </Link>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+                      >
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
 
         {activeMenuData && (
           <div className="absolute inset-x-0 top-full hidden border-t border-black/10 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)] lg:block">
-            <div className="mx-auto max-w-[1440px] px-6 py-8 lg:px-8">
+            <div className="mx-auto max-w-[1760px] px-4 py-8 sm:px-5 lg:px-6 xl:px-8">
               <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
                 <div className="rounded-3xl bg-slate-50 p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -614,7 +702,7 @@ const Header = () => {
 
       {mobileSearchOpen && (
         <div className="border-b border-black/10 bg-white lg:hidden">
-          <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
+          <div className="mx-auto max-w-[1760px] px-4 py-4 sm:px-5 lg:px-6">
             <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3">
               <div className="flex h-12 items-center rounded-full bg-slate-100 px-4">
                 <SearchIcon className="h-5 w-5 text-slate-500" />
@@ -653,9 +741,9 @@ const Header = () => {
 
       {mobileOpen && (
         <div className="border-b border-black/10 bg-white lg:hidden">
-          <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
+          <div className="mx-auto max-w-[1760px] px-4 py-4 sm:px-5 lg:px-6">
             <div className="space-y-3">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <div key={item.label} className="rounded-2xl border border-slate-200">
                   <div className="flex items-center justify-between px-4 py-4">
                     <Link

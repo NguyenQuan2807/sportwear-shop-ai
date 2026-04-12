@@ -10,6 +10,8 @@ import com.nguyenhuuquan.sportwearshop.repository.BrandRepository;
 import com.nguyenhuuquan.sportwearshop.service.BrandService;
 import com.nguyenhuuquan.sportwearshop.service.FileStorageService;
 import org.springframework.stereotype.Service;
+import com.nguyenhuuquan.sportwearshop.dto.brand.TopBrandResponse;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,6 +90,12 @@ public class BrandServiceImpl implements BrandService {
 
         fileStorageService.deleteFile(brand.getLogoUrl());
         brandRepository.delete(brand);
+    }
+
+    @Override
+    public List<TopBrandResponse> getTopBrandsForHome(int limit) {
+        int safeLimit = limit <= 0 ? 3 : Math.min(limit, 10);
+        return brandRepository.findTopBrandsForHome(PageRequest.of(0, safeLimit));
     }
 
     private boolean hasFileChanged(String oldUrl, String newUrl) {

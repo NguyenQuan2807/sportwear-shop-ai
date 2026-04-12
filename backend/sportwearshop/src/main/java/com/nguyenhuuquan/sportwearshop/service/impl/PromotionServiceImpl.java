@@ -2,7 +2,11 @@ package com.nguyenhuuquan.sportwearshop.service.impl;
 
 import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
 import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
-import com.nguyenhuuquan.sportwearshop.dto.promotion.*;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.CreatePromotionRequest;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.PromotionResponse;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.PromotionTargetRequest;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.PromotionTargetResponse;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.UpdatePromotionRequest;
 import com.nguyenhuuquan.sportwearshop.entity.Promotion;
 import com.nguyenhuuquan.sportwearshop.entity.PromotionTarget;
 import com.nguyenhuuquan.sportwearshop.repository.PromotionRepository;
@@ -37,6 +41,24 @@ public class PromotionServiceImpl implements PromotionService {
     public List<PromotionResponse> getAllPromotions() {
         return promotionRepository.findAll()
                 .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PromotionResponse> getActivePublicPromotions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        return promotionRepository.findAll()
+                .stream()
+                .filter(promotion -> Boolean.TRUE.equals(promotion.getIsActive()))
+                .filter(promotion -> promotion.getStatus() != null && "ACTIVE".equals(promotion.getStatus().name()))
+                .filter(promotion -> promotion.getStartTime() != null && !promotion.getStartTime().isAfter(now))
+                .filter(promotion -> promotion.getEndTime() != null && !promotion.getEndTime().isBefore(now))
+                .sorted((a, b) -> Integer.compare(
+                        b.getPriority() != null ? b.getPriority() : 0,
+                        a.getPriority() != null ? a.getPriority() : 0
+                ))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -79,8 +101,8 @@ public class PromotionServiceImpl implements PromotionService {
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
         String oldBannerImageUrl = promotion.getBannerImageUrl();
-
         applyPromotionData(promotion, request);
+
         Promotion savedPromotion = promotionRepository.save(promotion);
 
         List<PromotionTarget> oldTargets = promotionTargetRepository.findByPromotionId(savedPromotion.getId());
@@ -146,6 +168,10 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     private void saveTargets(Promotion promotion, List<PromotionTargetRequest> targetRequests) {
+        if (targetRequests == null || targetRequests.isEmpty()) {
+            return;
+        }
+
         for (PromotionTargetRequest item : targetRequests) {
             PromotionTarget target = new PromotionTarget();
             target.setPromotion(promotion);
@@ -187,7 +213,6 @@ public class PromotionServiceImpl implements PromotionService {
         response.setIsActive(promotion.getIsActive());
         response.setBannerImageUrl(promotion.getBannerImageUrl());
         response.setTargets(targets);
-
         return response;
     }
 }

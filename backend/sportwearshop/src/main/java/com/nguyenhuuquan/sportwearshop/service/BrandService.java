@@ -2,6 +2,7 @@ package com.nguyenhuuquan.sportwearshop.service;
 
 import com.nguyenhuuquan.sportwearshop.dto.brand.BrandResponse;
 import com.nguyenhuuquan.sportwearshop.dto.brand.CreateBrandRequest;
+import com.nguyenhuuquan.sportwearshop.dto.brand.TopBrandResponse;
 import com.nguyenhuuquan.sportwearshop.dto.brand.UpdateBrandRequest;
 
 import java.util.List;
@@ -12,4 +13,6 @@ public interface BrandService {
     BrandResponse createBrand(CreateBrandRequest request);
     BrandResponse updateBrand(Long id, UpdateBrandRequest request);
     void deleteBrand(Long id);
+
+    List<TopBrandResponse> getTopBrandsForHome(int limit);
 }
