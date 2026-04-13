@@ -1,0 +1,118 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { productUrl, visibleNavItems } from "./header.data";
+
+const useHeaderState = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [query, setQuery] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setMobileSearchOpen(false);
+    setMobileExpanded(null);
+    setActiveMenu(null);
+    setUserMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
+        setMobileExpanded(null);
+        setUserMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const activeMenuData = useMemo(
+    () => visibleNavItems.find((item) => item.label === activeMenu),
+    [activeMenu]
+  );
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const keyword = query.trim();
+
+    if (!keyword) {
+      navigate("/products");
+      return;
+    }
+
+    navigate(productUrl({ keyword }));
+  };
+
+  const handleQuickSearch = (value) => {
+    navigate(productUrl({ keyword: value }));
+    setMobileSearchOpen(false);
+  };
+
+  const isItemActive = (item) => {
+    if (location.pathname !== "/products") return false;
+
+    const params = new URLSearchParams(location.search);
+
+    switch (item.label) {
+      case "Nam":
+        return params.get("gender") === "MALE";
+      case "Nữ":
+        return params.get("gender") === "FEMALE";
+      case "Giày":
+        return params.get("category") === "Giày";
+      case "Quần Áo":
+        return params.get("category") === "Quần áo";
+      case "Phụ kiện":
+        return params.get("category") === "Phụ kiện";
+      case "Sale":
+        return params.get("sale") === "true";
+      default:
+        return false;
+    }
+  };
+
+  return {
+    mobileOpen,
+    setMobileOpen,
+    mobileSearchOpen,
+    setMobileSearchOpen,
+    mobileExpanded,
+    setMobileExpanded,
+    activeMenu,
+    setActiveMenu,
+    query,
+    setQuery,
+    userMenuOpen,
+    setUserMenuOpen,
+    userMenuRef,
+    activeMenuData,
+    handleSearchSubmit,
+    handleQuickSearch,
+    isItemActive,
+  };
+};
+
+export default useHeaderState;
