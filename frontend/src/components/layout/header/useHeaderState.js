@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { productUrl, visibleNavItems } from "./header.data";
 
+const TOP_THRESHOLD = 8;
+
 const useHeaderState = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -12,8 +14,11 @@ const useHeaderState = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [query, setQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   const userMenuRef = useRef(null);
+  const utilityMenuRef = useRef(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -21,6 +26,7 @@ const useHeaderState = () => {
     setMobileExpanded(null);
     setActiveMenu(null);
     setUserMenuOpen(false);
+    setUtilityMenuOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -38,10 +44,24 @@ const useHeaderState = () => {
   }, []);
 
   useEffect(() => {
+    const handleScroll = () => {
+      setIsAtTop(window.scrollY <= TOP_THRESHOLD);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!userMenuRef.current) return;
-      if (!userMenuRef.current.contains(event.target)) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
+      }
+
+      if (utilityMenuRef.current && !utilityMenuRef.current.contains(event.target)) {
+        setUtilityMenuOpen(false);
       }
     };
 
@@ -64,11 +84,14 @@ const useHeaderState = () => {
     }
 
     navigate(productUrl({ keyword }));
+    setMobileOpen(false);
+    setMobileSearchOpen(false);
   };
 
   const handleQuickSearch = (value) => {
     navigate(productUrl({ keyword: value }));
     setMobileSearchOpen(false);
+    setMobileOpen(false);
   };
 
   const isItemActive = (item) => {
@@ -107,7 +130,11 @@ const useHeaderState = () => {
     setQuery,
     userMenuOpen,
     setUserMenuOpen,
+    utilityMenuOpen,
+    setUtilityMenuOpen,
+    isAtTop,
     userMenuRef,
+    utilityMenuRef,
     activeMenuData,
     handleSearchSubmit,
     handleQuickSearch,

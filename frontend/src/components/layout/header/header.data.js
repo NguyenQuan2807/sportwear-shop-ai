@@ -28,7 +28,6 @@ const navItems = [
       {
         title: "Danh mục nổi bật",
         links: [
-          { label: "Tất cả sản phẩm nam", href: productUrl({ gender: "MALE" }) },
           { label: "Áo nam", href: productUrl({ gender: "MALE", category: "Áo" }) },
           { label: "Quần nam", href: productUrl({ gender: "MALE", category: "Quần" }) },
           { label: "Giày nam", href: productUrl({ gender: "MALE", category: "Giày" }) },
@@ -70,7 +69,6 @@ const navItems = [
       {
         title: "Danh mục nổi bật",
         links: [
-          { label: "Tất cả sản phẩm nữ", href: productUrl({ gender: "FEMALE" }) },
           { label: "Áo nữ", href: productUrl({ gender: "FEMALE", category: "Áo" }) },
           { label: "Quần nữ", href: productUrl({ gender: "FEMALE", category: "Quần" }) },
           { label: "Giày nữ", href: productUrl({ gender: "FEMALE", category: "Giày" }) },
@@ -112,7 +110,6 @@ const navItems = [
       {
         title: "Theo nhu cầu",
         links: [
-          { label: "Tất cả giày", href: productUrl({ category: "Giày" }) },
           { label: "Giày chạy bộ", href: productUrl({ category: "Giày", sport: "Chạy bộ" }) },
           { label: "Giày bóng đá", href: productUrl({ category: "Giày", sport: "Bóng đá" }) },
           { label: "Giày gym", href: productUrl({ category: "Giày", sport: "Gym" }) },
@@ -150,7 +147,6 @@ const navItems = [
       {
         title: "Danh mục",
         links: [
-          { label: "Tất cả quần áo", href: productUrl({ category: "Quần áo" }) },
           { label: "Áo thể thao", href: productUrl({ category: "Áo" }) },
           { label: "Quần thể thao", href: productUrl({ category: "Quần" }) },
           { label: "Set đồ tập", href: productUrl({ category: "Quần áo", sport: "Gym" }) },
@@ -189,7 +185,6 @@ const navItems = [
       {
         title: "Phổ biến",
         links: [
-          { label: "Tất cả phụ kiện", href: productUrl({ category: "Phụ kiện" }) },
           { label: "Túi & balo", href: productUrl({ category: "Phụ kiện", keyword: "balo" }) },
           { label: "Mũ", href: productUrl({ category: "Phụ kiện", keyword: "mũ" }) },
           { label: "Vớ", href: productUrl({ category: "Phụ kiện", keyword: "vớ" }) },
@@ -227,7 +222,6 @@ const navItems = [
       {
         title: "Khuyến mãi",
         links: [
-          { label: "Tất cả sản phẩm sale", href: productUrl({ sale: "true" }) },
           { label: "Sale nam", href: productUrl({ sale: "true", gender: "MALE" }) },
           { label: "Sale nữ", href: productUrl({ sale: "true", gender: "FEMALE" }) },
         ],

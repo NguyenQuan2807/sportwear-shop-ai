@@ -5,8 +5,8 @@ import { getSportsApi } from "../../services/sportService";
 import { getProductsApi } from "../../services/productService";
 
 const HERO_IMAGE = "/images/home/banner1.jpg";
-const HEADER_HEIGHT = 72;
-const PROMOTION_BAR_HEIGHT = HEADER_HEIGHT;
+const HEADER_HEIGHT = 64;
+const PROMOTION_BAR_HEIGHT = 56;
 const PROMOTION_ROTATE_MS = 5000;
 const TOP_THRESHOLD = 16;
 const SPORTS_VISIBLE_COUNT = 7;
