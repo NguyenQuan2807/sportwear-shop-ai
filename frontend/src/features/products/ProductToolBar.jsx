@@ -189,4 +189,4 @@ export const PromotionBanner = ({ hasPromotion, loading, errorMessage }) => {
       </div>
     </section>
   );
-};
+}; 

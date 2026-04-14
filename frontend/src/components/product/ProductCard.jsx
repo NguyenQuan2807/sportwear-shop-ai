@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const ProductCard = ({ product }) => {
   const hasPromotion = Boolean(product?.onPromotion);
@@ -66,7 +67,7 @@ const ProductCard = ({ product }) => {
           <div className="aspect-[4/5] w-full overflow-hidden">
             {product?.thumbnailUrl ? (
               <img
-                src={product.thumbnailUrl}
+                src={imageSrc}
                 alt={product?.name}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
