@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
+import useWishlist from "../../../hooks/useWishlist";
 import logo from "../../../assets/logo.png";
 
 import { quickSearches, visibleNavItems } from "./header.data";
@@ -90,6 +91,7 @@ const HeartIcon = ({ className = "h-5 w-5" }) => (
 const Header = () => {
   const { user, logout } = useAuth();
   const cartCount = useCartCount(user);
+  const { wishlistCount } = useWishlist();
 
   const {
     mobileOpen,
@@ -115,7 +117,6 @@ const Header = () => {
   const orderPath = "/orders";
   const adminPath = "/admin";
 
-  // Đổi path nếu project của bạn đang dùng route khác
   const profilePath = "/profile";
   const accountSettingsPath = "/account-settings";
 
@@ -149,7 +150,6 @@ const Header = () => {
       className="header-shell sticky top-0 z-50"
       onMouseLeave={() => setActiveMenu(null)}
     >
-      {/* Top utility bar: chỉ desktop, chỉ hiện khi đang ở đầu trang */}
       <div
         className={`header-utility-shell hidden lg:block ${
           isAtTop ? "header-utility-visible" : "header-utility-hidden"
@@ -205,11 +205,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Main header:
-          - mobile: flex justify-between
-          - desktop: grid 3 cột */}
       <div className="header-inner mx-auto flex h-[64px] w-full max-w-[1840px] items-center justify-between px-4 sm:px-6 xl:px-8 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-        {/* Logo */}
         <div className="flex min-w-0 items-center justify-start">
           <Link
             to="/"
@@ -228,7 +224,6 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Desktop nav */}
         <DesktopNav
           visibleNavItems={visibleNavItems}
           activeMenu={activeMenu}
@@ -236,7 +231,6 @@ const Header = () => {
           isItemActive={isItemActive}
         />
 
-        {/* Desktop right actions */}
         <div className="hidden items-center justify-end gap-3 lg:flex">
           <form
             onSubmit={handleSearchSubmit}
@@ -253,10 +247,15 @@ const Header = () => {
 
           <Link
             to="/wishlist"
-            className="header-mobile-icon-btn"
+            className="header-mobile-icon-btn relative"
             aria-label="Yêu thích"
           >
             <HeartIcon className="h-[18px] w-[18px]" />
+            {wishlistCount > 0 ? (
+              <span className="header-cart-badge">
+                {wishlistCount > 99 ? "99+" : wishlistCount}
+              </span>
+            ) : null}
           </Link>
 
           <Link
@@ -273,7 +272,6 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Mobile actions: luôn nằm ngoài cùng bên phải */}
         <div className="ml-auto flex items-center justify-end gap-1.5 lg:hidden">
           <button
             type="button"
@@ -283,6 +281,23 @@ const Header = () => {
           >
             <SearchIcon className="h-[18px] w-[18px]" />
           </button>
+
+          <Link
+            to="/wishlist"
+            className="header-mobile-icon-btn relative"
+            aria-label="Yêu thích"
+            onClick={() => {
+              closeMobileSearch();
+              closeMobileMenu();
+            }}
+          >
+            <HeartIcon className="h-[18px] w-[18px]" />
+            {wishlistCount > 0 ? (
+              <span className="header-cart-badge">
+                {wishlistCount > 99 ? "99+" : wishlistCount}
+              </span>
+            ) : null}
+          </Link>
 
           <Link
             to="/cart"
@@ -324,7 +339,6 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile search */}
       {mobileSearchOpen ? (
         <div className="border-t border-black/5 bg-white px-4 py-3 lg:hidden">
           <form onSubmit={handleSearchSubmit} className="header-mobile-search px-3 py-2.5">
@@ -343,7 +357,6 @@ const Header = () => {
 
       <MegaMenuPanel activeMenuData={activeMenuData} />
 
-      {/* Giữ MobilePanels.jsx ở bản portal đã sửa trước đó */}
       <MobilePanels
         mobileOpen={mobileOpen}
         quickSearches={quickSearches}
