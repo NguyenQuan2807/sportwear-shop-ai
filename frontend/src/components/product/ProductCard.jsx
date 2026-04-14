@@ -5,6 +5,7 @@ import { resolveImageUrl } from "../../utils/resolveImageUrl";
 const ProductCard = ({ product }) => {
   const hasPromotion = Boolean(product?.onPromotion);
   const isFlashSale = Boolean(product?.flashSale);
+  const imageSrc = resolveImageUrl(product?.thumbnailUrl);
 
   const meta = [product?.brandName, product?.sportName].filter(Boolean).join(" • ");
 

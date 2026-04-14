@@ -148,7 +148,7 @@ public class ProductServiceImpl implements ProductService {
         response.setSportName(product.getSport().getName());
         response.setGender(product.getGender().name());
         response.setMaterial(product.getMaterial());
-        response.setThumbnailUrl(product.getThumbnailUrl());
+        response.setThumbnailUrl(normalizeThumbnailUrl(product.getThumbnailUrl()));
         response.setIsActive(product.getIsActive());
 
         List<Double> originalPrices = variants.stream()
@@ -244,5 +244,25 @@ public class ProductServiceImpl implements ProductService {
             case "oldest" -> Sort.by(Sort.Direction.ASC, "id");
             default -> Sort.by(Sort.Direction.DESC, "id");
         };
+    }
+
+    private String normalizeThumbnailUrl(String thumbnailUrl) {
+        if (thumbnailUrl == null || thumbnailUrl.isBlank()) {
+            return null;
+        }
+
+        if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
+            return thumbnailUrl;
+        }
+
+        if (thumbnailUrl.startsWith("/uploads/")) {
+            return thumbnailUrl;
+        }
+
+        if (thumbnailUrl.startsWith("/")) {
+            return "/uploads" + thumbnailUrl;
+        }
+
+        return "/uploads/" + thumbnailUrl;
     }
 }
