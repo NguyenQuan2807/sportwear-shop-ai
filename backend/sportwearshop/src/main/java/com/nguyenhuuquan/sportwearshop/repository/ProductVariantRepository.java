@@ -7,5 +7,8 @@ import java.util.List;
 
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
     boolean existsBySku(String sku);
+
     List<ProductVariant> findByProductId(Long productId);
+
+    List<ProductVariant> findByProductIdIn(List<Long> productIds);
 }

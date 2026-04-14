@@ -7,6 +7,7 @@ import com.nguyenhuuquan.sportwearshop.dto.product.ProductPageResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductSearchRequest;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductVariantResponse;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
 import com.nguyenhuuquan.sportwearshop.entity.Product;
 import com.nguyenhuuquan.sportwearshop.entity.ProductImage;
 import com.nguyenhuuquan.sportwearshop.entity.ProductVariant;
@@ -15,7 +16,6 @@ import com.nguyenhuuquan.sportwearshop.repository.ProductRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductVariantRepository;
 import com.nguyenhuuquan.sportwearshop.service.ProductService;
 import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
-import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
 import com.nguyenhuuquan.sportwearshop.specification.ProductSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,10 +24,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,19 +53,23 @@ public class ProductServiceImpl implements ProductService {
         Sort sort = buildSort(request.getSort());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
 
-        Specification<Product> specification = ProductSpecification.isActive();
-
-        specification = specification.and(ProductSpecification.hasKeyword(request.getKeyword()));
-        specification = specification.and(ProductSpecification.hasCategoryId(request.getCategoryId()));
-        specification = specification.and(ProductSpecification.hasBrandId(request.getBrandId()));
-        specification = specification.and(ProductSpecification.hasSportId(request.getSportId()));
-        specification = specification.and(ProductSpecification.hasPriceBetween(request.getMinPrice(), request.getMaxPrice()));
+        Specification<Product> specification = ProductSpecification.isActive()
+                .and(ProductSpecification.hasKeyword(request.getKeyword()))
+                .and(ProductSpecification.hasCategoryId(request.getCategoryId()))
+                .and(ProductSpecification.hasBrandId(request.getBrandId()))
+                .and(ProductSpecification.hasSportId(request.getSportId()))
+                .and(ProductSpecification.hasPriceBetween(request.getMinPrice(), request.getMaxPrice()));
 
         Page<Product> productPage = productRepository.findAll(specification, pageable);
+        List<Product> products = productPage.getContent();
 
-        List<ProductResponse> productResponses = productPage.getContent()
-                .stream()
-                .map(this::mapToProductResponse)
+        Map<Long, List<ProductVariant>> variantsByProductId = loadVariantsByProductId(products);
+
+        List<ProductResponse> productResponses = products.stream()
+                .map(product -> mapToProductResponse(
+                        product,
+                        variantsByProductId.getOrDefault(product.getId(), Collections.emptyList())
+                ))
                 .collect(Collectors.toList());
 
         ProductPageResponse response = new ProductPageResponse();
@@ -100,13 +104,40 @@ public class ProductServiceImpl implements ProductService {
         response.setThumbnailUrl(product.getThumbnailUrl());
         response.setIsActive(product.getIsActive());
 
-        response.setVariants(variants.stream().map(this::mapToVariantResponse).collect(Collectors.toList()));
-        response.setImages(images.stream().map(this::mapToImageResponse).collect(Collectors.toList()));
+        response.setVariants(
+                variants.stream()
+                        .map(this::mapToVariantResponse)
+                        .collect(Collectors.toList())
+        );
+        response.setImages(
+                images.stream()
+                        .map(this::mapToImageResponse)
+                        .collect(Collectors.toList())
+        );
 
         return response;
     }
 
-    private ProductResponse mapToProductResponse(Product product) {
+    private Map<Long, List<ProductVariant>> loadVariantsByProductId(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (productIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return productVariantRepository.findByProductIdIn(productIds)
+                .stream()
+                .collect(Collectors.groupingBy(variant -> variant.getProduct().getId()));
+    }
+
+    private ProductResponse mapToProductResponse(Product product, List<ProductVariant> variants) {
         ProductResponse response = new ProductResponse();
         response.setId(product.getId());
         response.setName(product.getName());
@@ -119,8 +150,6 @@ public class ProductServiceImpl implements ProductService {
         response.setMaterial(product.getMaterial());
         response.setThumbnailUrl(product.getThumbnailUrl());
         response.setIsActive(product.getIsActive());
-
-        List<ProductVariant> variants = productVariantRepository.findByProductId(product.getId());
 
         List<Double> originalPrices = variants.stream()
                 .map(ProductVariant::getPrice)
@@ -151,14 +180,19 @@ public class ProductServiceImpl implements ProductService {
                 .max(Integer::compareTo)
                 .orElse(0);
 
-        response.setMinPrice(salePrices.stream().min(Double::compareTo).orElse(null));
-        response.setMaxPrice(salePrices.stream().max(Double::compareTo).orElse(null));
+        Double originalMinPrice = originalPrices.stream().min(Double::compareTo).orElse(null);
+        Double originalMaxPrice = originalPrices.stream().max(Double::compareTo).orElse(null);
+        Double saleMinPrice = salePrices.stream().min(Double::compareTo).orElse(null);
+        Double saleMaxPrice = salePrices.stream().max(Double::compareTo).orElse(null);
+
+        response.setMinPrice(saleMinPrice);
+        response.setMaxPrice(saleMaxPrice);
         response.setInStock(inStock);
 
-        response.setOriginalMinPrice(originalPrices.stream().min(Double::compareTo).orElse(null));
-        response.setOriginalMaxPrice(originalPrices.stream().max(Double::compareTo).orElse(null));
-        response.setSaleMinPrice(salePrices.stream().min(Double::compareTo).orElse(null));
-        response.setSaleMaxPrice(salePrices.stream().max(Double::compareTo).orElse(null));
+        response.setOriginalMinPrice(originalMinPrice);
+        response.setOriginalMaxPrice(originalMaxPrice);
+        response.setSaleMinPrice(saleMinPrice);
+        response.setSaleMaxPrice(saleMaxPrice);
         response.setMaxDiscountPercent(maxDiscountPercent);
         response.setOnPromotion(onPromotion);
         response.setFlashSale(flashSale);

@@ -32,13 +32,20 @@ const LoginPage = () => {
     try {
       const response = await loginApi(formData);
 
-      const { token, user, message } = response.data;
+      const { token, accessToken, refreshToken, user, message } = response.data;
+      const effectiveToken = accessToken || token;
 
-      if (!token || !user) {
+      if (!effectiveToken || !user) {
         throw new Error(message || "Dữ liệu đăng nhập không hợp lệ");
       }
 
-      login(token, user);
+      login({
+        token: effectiveToken,
+        accessToken: effectiveToken,
+        refreshToken,
+        user,
+      });
+
       navigate("/");
     } catch (error) {
       const backendMessage =

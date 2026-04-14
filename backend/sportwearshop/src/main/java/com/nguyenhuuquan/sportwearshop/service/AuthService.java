@@ -8,5 +8,6 @@ import com.nguyenhuuquan.sportwearshop.dto.auth.UserResponse;
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
     AuthResponse login(LoginRequest request);
+    AuthResponse refreshToken(String refreshToken);
     UserResponse getCurrentUser(String email);
 }

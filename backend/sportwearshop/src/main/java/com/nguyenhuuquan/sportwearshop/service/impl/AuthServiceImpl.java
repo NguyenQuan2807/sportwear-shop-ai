@@ -53,14 +53,7 @@ public class AuthServiceImpl implements AuthService {
         user.setRole(userRole);
 
         User savedUser = userRepository.save(user);
-
-        AuthResponse response = new AuthResponse();
-        response.setMessage("Đăng ký thành công");
-        response.setUser(mapToUserResponse(savedUser));
-        String token = jwtService.generateToken(savedUser.getEmail());
-        response.setToken(token);
-
-        return response;
+        return buildAuthResponse(savedUser, "Đăng ký thành công");
     }
 
     @Override
@@ -73,9 +66,48 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Email hoặc mật khẩu không đúng");
         }
 
+        return buildAuthResponse(user, "Đăng nhập thành công");
+    }
+
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        String email;
+
+        try {
+            email = jwtService.extractEmail(refreshToken);
+        } catch (Exception ex) {
+            throw new UnauthorizedException("Refresh token không hợp lệ");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UnauthorizedException("Người dùng không tồn tại"));
+
+        if (!jwtService.isRefreshTokenValid(refreshToken, user.getEmail())) {
+            throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+
+        return buildAuthResponse(user, "Làm mới token thành công");
+    }
+
+    @Override
+    public UserResponse getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+
+        return mapToUserResponse(user);
+    }
+
+    private AuthResponse buildAuthResponse(User user, String message) {
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
         AuthResponse response = new AuthResponse();
-        response.setMessage("Đăng nhập thành công");
-        response.setToken(jwtService.generateToken(user.getEmail()));
+        response.setMessage(message);
+        response.setToken(accessToken);
+        response.setAccessToken(accessToken);
+        response.setRefreshToken(refreshToken);
+        response.setTokenType("Bearer");
+        response.setExpiresIn(jwtService.getAccessTokenExpiration());
         response.setUser(mapToUserResponse(user));
 
         return response;
@@ -90,13 +122,5 @@ public class AuthServiceImpl implements AuthService {
         response.setAddress(user.getAddress());
         response.setRoleName(user.getRole().getName().name());
         return response;
-    }
-
-    @Override
-    public UserResponse getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
-
-        return mapToUserResponse(user);
     }
 }

@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { getCurrentUserApi } from "../services/authService";
+import { clearAuthSession, getAccessToken, saveAuthSession } from "../utils/tokenStorage";
 
 export const AuthContext = createContext();
 
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
       const response = await getCurrentUserApi();
       setUser(response.data);
     } catch (error) {
-      localStorage.removeItem("token");
+      clearAuthSession();
       setUser(null);
     } finally {
       setLoading(false);
@@ -20,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAccessToken();
     if (token) {
       fetchCurrentUser();
     } else {
@@ -28,13 +29,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (token, userData) => {
-    localStorage.setItem("token", token);
-    setUser(userData);
+  const login = (tokenOrPayload, userData) => {
+    if (typeof tokenOrPayload === "string") {
+      saveAuthSession({ token: tokenOrPayload });
+      setUser(userData || null);
+      return;
+    }
+
+    saveAuthSession(tokenOrPayload || {});
+    setUser(tokenOrPayload?.user || null);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    clearAuthSession();
     setUser(null);
   };
 
