@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/sportwear_shop?useSSL=false&serverTimezone=Asia/Bangkok&allowPublicKeyRetrieval=true
     username: root
-    password: abc123!@#
+    password: "abc123!@#"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -23,7 +23,7 @@ server:
   port: 8080
 
 jwt:
-  secret: quan2807_local_dev_secret_key_2026_super_long_x9k2
+  secret: "mot_secret_dai_hon_32_ky_tu_cho_local_dev_123456"
   access-expiration: 3600000
   refresh-expiration: 604800000
 

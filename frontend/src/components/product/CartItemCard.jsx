@@ -1,4 +1,5 @@
 import { formatCurrency } from "../../utils/formatCurrency";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const CartItemCard = ({
   item,
@@ -10,14 +11,15 @@ const CartItemCard = ({
 }) => {
   const isUpdating = loadingItemId === item.id;
   const isDeleting = deletingItemId === item.id;
+  const thumbnailSrc = resolveImageUrl(item.thumbnailUrl);
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow">
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
-          {item.thumbnailUrl ? (
+          {thumbnailSrc ? (
             <img
-              src={item.thumbnailUrl}
+              src={thumbnailSrc}
               alt={item.productName}
               className="h-full w-full object-cover"
             />

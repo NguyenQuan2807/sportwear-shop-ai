@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const ProductImageGallery = ({ images = [], selectedImage, onSelectImage }) => {
   const sortedImages = useMemo(() => {
@@ -12,13 +13,15 @@ const ProductImageGallery = ({ images = [], selectedImage, onSelectImage }) => {
     sortedImages[0]?.imageUrl ||
     "";
 
+  const activeImageSrc = resolveImageUrl(activeImage);
+
   return (
     <div className="space-y-4">
       <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-100 to-slate-200">
-        {activeImage ? (
+        {activeImageSrc ? (
           <>
             <img
-              src={activeImage}
+              src={activeImageSrc}
               alt="product"
               className="h-[360px] w-full object-cover sm:h-[440px] xl:h-[560px]"
             />
@@ -55,6 +58,7 @@ const ProductImageGallery = ({ images = [], selectedImage, onSelectImage }) => {
           <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible">
             {sortedImages.map((image, index) => {
               const isActive = activeImage === image.imageUrl;
+              const imageSrc = resolveImageUrl(image.imageUrl);
 
               return (
                 <button
@@ -68,7 +72,7 @@ const ProductImageGallery = ({ images = [], selectedImage, onSelectImage }) => {
                   }`}
                 >
                   <img
-                    src={image.imageUrl}
+                    src={imageSrc}
                     alt={`thumbnail-${index + 1}`}
                     className="h-24 w-24 object-cover transition duration-300 group-hover:scale-105 sm:h-28 sm:w-full"
                   />

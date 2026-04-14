@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { getSportsApi } from "../../services/sportService";
 import { getProductsApi } from "../../services/productService";
+import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
 const HERO_IMAGE = "/images/home/banner1.jpg";
 const HEADER_HEIGHT = 64;
@@ -17,7 +18,8 @@ const fallbackSpotlightItems = [
     image: "/images/campaign-shoes.jpg",
     tag: "12 sản phẩm",
     title: "Nike",
-    description: "Khám phá bộ sưu tập thể thao nổi bật với tinh thần hiện đại, mạnh mẽ và linh hoạt cho mọi chuyển động.",
+    description:
+      "Khám phá bộ sưu tập thể thao nổi bật với tinh thần hiện đại, mạnh mẽ và linh hoạt cho mọi chuyển động.",
     link: "/products",
   },
   {
@@ -25,7 +27,8 @@ const fallbackSpotlightItems = [
     image: "/images/campaign-basketball.jpg",
     tag: "10 sản phẩm",
     title: "Adidas",
-    description: "Thiết kế hiệu suất cao, tối ưu cho vận động hàng ngày từ tập luyện đến phong cách thể thao đường phố.",
+    description:
+      "Thiết kế hiệu suất cao, tối ưu cho vận động hàng ngày từ tập luyện đến phong cách thể thao đường phố.",
     link: "/products",
   },
   {
@@ -33,7 +36,8 @@ const fallbackSpotlightItems = [
     image: "/images/campaign-wellness.jpg",
     tag: "8 sản phẩm",
     title: "Puma",
-    description: "Phong cách năng động với chất liệu thoải mái, phù hợp cho nhiều bộ môn và nhịp sống hiện đại.",
+    description:
+      "Phong cách năng động với chất liệu thoải mái, phù hợp cho nhiều bộ môn và nhịp sống hiện đại.",
     link: "/products",
   },
 ];
@@ -67,7 +71,6 @@ const campaignItems = [
     link: "/products",
   },
 ];
-
 
 const fallbackSports = [
   { id: "running", name: "Running", productCount: 11 },
@@ -103,7 +106,6 @@ const sportImageMap = {
     "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=80",
 };
 
-
 function resolveSportImageByName(name = "") {
   const normalized = String(name).trim().toLowerCase();
   return (
@@ -114,15 +116,20 @@ function resolveSportImageByName(name = "") {
 }
 
 function resolveSportCardImage(sport) {
-  return sport?.imageUrl || resolveSportImageByName(sport?.name);
+  if (sport?.imageUrl) {
+    return resolveImageUrl(sport.imageUrl);
+  }
+
+  return resolveSportImageByName(sport?.name);
 }
-
-
 
 function isPromotionAvailable(promotion, now = new Date()) {
   if (!promotion || promotion.isActive === false) return false;
 
-  if (promotion.status && !["ACTIVE", "SCHEDULED"].includes(String(promotion.status).toUpperCase())) {
+  if (
+    promotion.status &&
+    !["ACTIVE", "SCHEDULED"].includes(String(promotion.status).toUpperCase())
+  ) {
     return false;
   }
 
@@ -143,10 +150,10 @@ function formatPromotionHeadline(promotion) {
     ? promotion.discountType === "PERCENT"
       ? `Giảm ${discountValue}%`
       : promotion.discountType === "FIXED_AMOUNT"
-        ? `Giảm ${discountValue.toLocaleString("vi-VN")}đ`
-        : promotion.discountType === "FIXED_PRICE"
-          ? `Chỉ còn ${discountValue.toLocaleString("vi-VN")}đ`
-          : ""
+      ? `Giảm ${discountValue.toLocaleString("vi-VN")}đ`
+      : promotion.discountType === "FIXED_PRICE"
+      ? `Chỉ còn ${discountValue.toLocaleString("vi-VN")}đ`
+      : ""
     : "";
 
   if (discountText) {
@@ -184,13 +191,17 @@ function resolveSportProductCount(sport) {
 }
 
 function resolveBrandImage(brand) {
-  return (
+  const dynamicImage =
     brand?.bannerImageUrl ||
     brand?.coverImageUrl ||
     brand?.imageUrl ||
-    brand?.logoUrl ||
-    "/images/campaign-shoes.jpg"
-  );
+    brand?.logoUrl;
+
+  if (dynamicImage) {
+    return resolveImageUrl(dynamicImage);
+  }
+
+  return "/images/campaign-shoes.jpg";
 }
 
 function resolveBrandDescription(brand) {
@@ -225,7 +236,12 @@ function resolveProductPrice(product) {
   const minPrice = Number(product?.minPrice);
   const maxPrice = Number(product?.maxPrice);
 
-  if (Number.isFinite(minPrice) && Number.isFinite(maxPrice) && minPrice > 0 && maxPrice > 0) {
+  if (
+    Number.isFinite(minPrice) &&
+    Number.isFinite(maxPrice) &&
+    minPrice > 0 &&
+    maxPrice > 0
+  ) {
     if (minPrice === maxPrice) {
       return `${minPrice.toLocaleString("vi-VN")}đ`;
     }
@@ -236,17 +252,25 @@ function resolveProductPrice(product) {
 }
 
 function resolveProductImage(product) {
-  return (
-    product?.thumbnailUrl ||
-    product?.imageUrl ||
-    product?.thumbnail ||
-    "/images/campaign-shoes.jpg"
-  );
+  const dynamicImage =
+    product?.thumbnailUrl || product?.imageUrl || product?.thumbnail;
+
+  if (dynamicImage) {
+    return resolveImageUrl(dynamicImage);
+  }
+
+  return "/images/campaign-shoes.jpg";
 }
 
 function ArrowLeftIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-5 w-5"
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
     </svg>
   );
@@ -254,7 +278,13 @@ function ArrowLeftIcon() {
 
 function ArrowRightIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-5 w-5"
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
     </svg>
   );
@@ -262,7 +292,13 @@ function ArrowRightIcon() {
 
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-10 w-10">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="h-10 w-10"
+    >
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16v12H4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
     </svg>
@@ -299,28 +335,28 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
-  const fetchNewProducts = async () => {
-    try {
-      setNewProductsLoading(true);
+    const fetchNewProducts = async () => {
+      try {
+        setNewProductsLoading(true);
 
-      const response = await getProductsApi({
-        page: 0,
-        size: 8,
-        sort: "newest",
-      });
+        const response = await getProductsApi({
+          page: 0,
+          size: 8,
+          sort: "newest",
+        });
 
-      const data = response?.data || {};
-      setNewProducts(Array.isArray(data.content) ? data.content : []);
-    } catch (error) {
-      console.error("Không thể tải sản phẩm mới", error);
-      setNewProducts([]);
-    } finally {
-      setNewProductsLoading(false);
-    }
-  };
+        const data = response?.data || {};
+        setNewProducts(Array.isArray(data.content) ? data.content : []);
+      } catch (error) {
+        console.error("Không thể tải sản phẩm mới", error);
+        setNewProducts([]);
+      } finally {
+        setNewProductsLoading(false);
+      }
+    };
 
-  fetchNewProducts();
-}, []);
+    fetchNewProducts();
+  }, []);
 
   useEffect(() => {
     const fetchPromotions = async () => {
@@ -331,12 +367,14 @@ function HomePage() {
         ]);
 
         const activeData =
-          activeResponse.status === "fulfilled" && Array.isArray(activeResponse.value?.data)
+          activeResponse.status === "fulfilled" &&
+          Array.isArray(activeResponse.value?.data)
             ? activeResponse.value.data
             : null;
 
         const fallbackData =
-          fallbackResponse.status === "fulfilled" && Array.isArray(fallbackResponse.value?.data)
+          fallbackResponse.status === "fulfilled" &&
+          Array.isArray(fallbackResponse.value?.data)
             ? fallbackResponse.value.data
             : null;
 
@@ -402,20 +440,29 @@ function HomePage() {
     return fallbackSports;
   }, [sports]);
 
-  const maxSportStartIndex = Math.max(0, displaySports.length - SPORTS_VISIBLE_COUNT);
+  const maxSportStartIndex = Math.max(
+    0,
+    displaySports.length - SPORTS_VISIBLE_COUNT
+  );
 
   useEffect(() => {
     setSportStartIndex((prev) => Math.min(prev, maxSportStartIndex));
   }, [maxSportStartIndex]);
 
   const visibleSports = useMemo(() => {
-    return displaySports.slice(sportStartIndex, sportStartIndex + SPORTS_VISIBLE_COUNT);
+    return displaySports.slice(
+      sportStartIndex,
+      sportStartIndex + SPORTS_VISIBLE_COUNT
+    );
   }, [displaySports, sportStartIndex]);
 
   const activePromotion = promotions[promotionIndex] || null;
   const showPromotionBar = isAtTop && promotions.length > 0;
-  const heroHeight = `calc(100vh - ${HEADER_HEIGHT + (promotions.length > 0 ? PROMOTION_BAR_HEIGHT : 0)}px)`;
-  const sectionOuterClass = "px-3 py-16 sm:px-4 sm:py-20 lg:px-5 lg:py-24 xl:px-6";
+  const heroHeight = `calc(100vh - ${
+    HEADER_HEIGHT + (promotions.length > 0 ? PROMOTION_BAR_HEIGHT : 0)
+  }px)`;
+  const sectionOuterClass =
+    "px-3 py-16 sm:px-4 sm:py-20 lg:px-5 lg:py-24 xl:px-6";
   const sectionInnerClass = "mx-auto w-full max-w-[1760px]";
 
   const spotlightBrands = useMemo(() => {
@@ -427,7 +474,10 @@ function HomePage() {
       tag: `${Number(brand.productCount) || 0} sản phẩm`,
       title: brand.name || "Thương hiệu nổi bật",
       description: resolveBrandDescription(brand),
-      link: typeof brand.id === "number" ? `/products?brandId=${brand.id}` : "/products",
+      link:
+        typeof brand.id === "number"
+          ? `/products?brandId=${brand.id}`
+          : "/products",
     }));
   }, [topBrands]);
 
@@ -459,7 +509,9 @@ function HomePage() {
     <div className="w-full bg-white text-black">
       <div
         className={`sticky top-0 z-30 overflow-hidden bg-black text-white transition-[max-height,opacity,transform] duration-300 ${
-          showPromotionBar ? "max-h-[72px] opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-2"
+          showPromotionBar
+            ? "max-h-[72px] opacity-100 translate-y-0"
+            : "max-h-0 opacity-0 -translate-y-2"
         }`}
       >
         <div
@@ -481,7 +533,10 @@ function HomePage() {
         </div>
       </div>
 
-      <section className="relative overflow-hidden bg-white" style={{ minHeight: heroHeight }}>
+      <section
+        className="relative overflow-hidden bg-white"
+        style={{ minHeight: heroHeight }}
+      >
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -503,7 +558,8 @@ function HomePage() {
               giới hạn
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
-              Khám phá thời trang thể thao hiện đại với nhịp điệu mạnh mẽ và trải nghiệm mua sắm cao cấp.
+              Khám phá thời trang thể thao hiện đại với nhịp điệu mạnh mẽ và trải
+              nghiệm mua sắm cao cấp.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
@@ -563,7 +619,11 @@ function HomePage() {
               return (
                 <Link
                   key={sport.id}
-                  to={typeof sport.id === "number" ? `/products?sportId=${sport.id}` : "/products"}
+                  to={
+                    typeof sport.id === "number"
+                      ? `/products?sportId=${sport.id}`
+                      : "/products"
+                  }
                   className="group block transition hover:-translate-y-1"
                 >
                   <div className="aspect-[4/5] overflow-hidden bg-zinc-200">
@@ -574,9 +634,13 @@ function HomePage() {
                     />
                   </div>
                   <div className="pt-4 text-center">
-                    <p className="text-sm font-semibold text-black sm:text-[15px] lg:text-base">{sport.name}</p>
+                    <p className="text-sm font-semibold text-black sm:text-[15px] lg:text-base">
+                      {sport.name}
+                    </p>
                     <p className="mt-2 text-xs font-medium text-zinc-500 sm:text-sm">
-                      {productCount !== null ? `${productCount} sản phẩm` : "Đang cập nhật"}
+                      {productCount !== null
+                        ? `${productCount} sản phẩm`
+                        : "Đang cập nhật"}
                     </p>
                   </div>
                 </Link>
@@ -586,7 +650,8 @@ function HomePage() {
 
           {sportsError && sports.length === 0 ? (
             <p className="mt-5 text-sm text-zinc-500">
-              Không tải được môn thể thao từ API, đang hiển thị dữ liệu giao diện dự phòng.
+              Không tải được môn thể thao từ API, đang hiển thị dữ liệu giao diện
+              dự phòng.
             </p>
           ) : null}
         </div>
@@ -616,9 +681,15 @@ function HomePage() {
                 <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-zinc-500 sm:text-sm">
                   Thương hiệu
                 </p>
-                <h3 className="mb-3 text-2xl font-bold text-black sm:text-3xl">{item.title}</h3>
-                <p className="mb-3 text-sm font-semibold text-zinc-500">{item.tag}</p>
-                <p className="text-sm leading-7 text-zinc-600 sm:text-base">{item.description}</p>
+                <h3 className="mb-3 text-2xl font-bold text-black sm:text-3xl">
+                  {item.title}
+                </h3>
+                <p className="mb-3 text-sm font-semibold text-zinc-500">
+                  {item.tag}
+                </p>
+                <p className="text-sm leading-7 text-zinc-600 sm:text-base">
+                  {item.description}
+                </p>
                 <span className="mt-4 inline-flex text-sm font-semibold text-black transition group-hover:translate-x-1">
                   Khám phá →
                 </span>
@@ -628,7 +699,8 @@ function HomePage() {
 
           {brandsError && topBrands.length === 0 ? (
             <p className="mt-5 text-center text-sm text-zinc-500">
-              Không tải được dữ liệu thương hiệu từ API, đang hiển thị nội dung giao diện dự phòng.
+              Không tải được dữ liệu thương hiệu từ API, đang hiển thị nội dung
+              giao diện dự phòng.
             </p>
           ) : null}
         </div>
@@ -637,21 +709,32 @@ function HomePage() {
       <section className={`bg-white ${sectionOuterClass}`}>
         <div className={sectionInnerClass}>
           <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0">
-            <Link to={campaignItems[0].link} className="group relative block min-h-[420px] overflow-hidden lg:min-h-[640px]">
+            <Link
+              to={campaignItems[0].link}
+              className="group relative block min-h-[420px] overflow-hidden lg:min-h-[640px]"
+            >
               <img
                 src={campaignItems[0].image}
                 alt={campaignItems[0].title}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
-              <div className={`absolute inset-0 ${campaignItems[0].overlay} transition duration-500 group-hover:bg-black/45`} />
+              <div
+                className={`absolute inset-0 ${campaignItems[0].overlay} transition duration-500 group-hover:bg-black/45`}
+              />
               <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8 lg:p-12">
-                <p className={`mb-3 text-xs font-bold uppercase tracking-[0.24em] ${campaignItems[0].textClass}/80`}>
+                <p
+                  className={`mb-3 text-xs font-bold uppercase tracking-[0.24em] ${campaignItems[0].textClass}/80`}
+                >
                   Campaign
                 </p>
-                <h3 className={`text-4xl font-black ${campaignItems[0].textClass} sm:text-5xl lg:text-6xl`}>
+                <h3
+                  className={`text-4xl font-black ${campaignItems[0].textClass} sm:text-5xl lg:text-6xl`}
+                >
                   {campaignItems[0].title}
                 </h3>
-                <p className={`mt-2 text-lg ${campaignItems[0].textClass}/90 sm:text-xl`}>
+                <p
+                  className={`mt-2 text-lg ${campaignItems[0].textClass}/90 sm:text-xl`}
+                >
                   {campaignItems[0].subtitle}
                 </p>
               </div>
@@ -659,21 +742,35 @@ function HomePage() {
 
             <div className="space-y-8">
               {campaignItems.slice(1).map((item) => (
-                <Link key={item.id} to={item.link} className="group relative block h-80 overflow-hidden sm:h-96">
+                <Link
+                  key={item.id}
+                  to={item.link}
+                  className="group relative block h-80 overflow-hidden sm:h-96"
+                >
                   <img
                     src={item.image}
                     alt={item.title}
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
-                  <div className={`absolute inset-0 ${item.overlay} transition duration-500 group-hover:bg-black/45`} />
+                  <div
+                    className={`absolute inset-0 ${item.overlay} transition duration-500 group-hover:bg-black/45`}
+                  />
                   <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8">
-                    <p className={`mb-2 text-xs font-bold uppercase tracking-[0.24em] ${item.textClass}/80`}>
+                    <p
+                      className={`mb-2 text-xs font-bold uppercase tracking-[0.24em] ${item.textClass}/80`}
+                    >
                       Campaign
                     </p>
-                    <h3 className={`text-2xl font-black ${item.textClass} sm:text-3xl lg:text-4xl`}>
+                    <h3
+                      className={`text-2xl font-black ${item.textClass} sm:text-3xl lg:text-4xl`}
+                    >
                       {item.title}
                     </h3>
-                    <p className={`mt-2 text-base ${item.textClass}/90 sm:text-lg`}>{item.subtitle}</p>
+                    <p
+                      className={`mt-2 text-base ${item.textClass}/90 sm:text-lg`}
+                    >
+                      {item.subtitle}
+                    </p>
                   </div>
                 </Link>
               ))}
@@ -775,12 +872,18 @@ function HomePage() {
           <div className="mb-4 flex justify-center text-white">
             <MailIcon />
           </div>
-          <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">Nhận tin khuyến mãi</h2>
+          <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">
+            Nhận tin khuyến mãi
+          </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
-            Đăng ký để nhận thông tin về bộ sưu tập mới, ưu đãi nổi bật và cảm hứng thời trang thể thao mỗi tuần.
+            Đăng ký để nhận thông tin về bộ sưu tập mới, ưu đãi nổi bật và cảm
+            hứng thời trang thể thao mỗi tuần.
           </p>
 
-          <form onSubmit={handleNewsletterSubmit} className="mt-8 flex flex-col gap-4 sm:flex-row">
+          <form
+            onSubmit={handleNewsletterSubmit}
+            className="mt-8 flex flex-col gap-4 sm:flex-row"
+          >
             <input
               type="email"
               value={email}
@@ -797,7 +900,9 @@ function HomePage() {
           </form>
 
           {submitted ? (
-            <p className="mt-4 text-sm text-emerald-300">Đăng ký thành công. Cảm ơn bạn đã quan tâm.</p>
+            <p className="mt-4 text-sm text-emerald-300">
+              Đăng ký thành công. Cảm ơn bạn đã quan tâm.
+            </p>
           ) : null}
         </div>
       </section>
