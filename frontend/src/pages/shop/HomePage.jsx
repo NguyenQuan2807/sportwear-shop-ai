@@ -5,12 +5,11 @@ import { getSportsApi } from "../../services/sportService";
 import { getProductsApi } from "../../services/productService";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
-const HERO_IMAGE = "/images/home/banner1.jpg";
+const HERO_IMAGE = "/images/home/banner11.png";
 const HEADER_HEIGHT = 64;
 const PROMOTION_BAR_HEIGHT = 56;
 const PROMOTION_ROTATE_MS = 5000;
 const TOP_THRESHOLD = 16;
-const SPORTS_VISIBLE_COUNT = 7;
 
 const fallbackSpotlightItems = [
   {
@@ -270,6 +269,7 @@ function ArrowLeftIcon() {
       stroke="currentColor"
       strokeWidth="1.8"
       className="h-5 w-5"
+      aria-hidden="true"
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
     </svg>
@@ -284,6 +284,7 @@ function ArrowRightIcon() {
       stroke="currentColor"
       strokeWidth="1.8"
       className="h-5 w-5"
+      aria-hidden="true"
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
     </svg>
@@ -298,6 +299,7 @@ function MailIcon() {
       stroke="currentColor"
       strokeWidth="1.8"
       className="h-10 w-10"
+      aria-hidden="true"
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16v12H4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
@@ -313,11 +315,12 @@ function HomePage() {
   const [isAtTop, setIsAtTop] = useState(true);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [sportStartIndex, setSportStartIndex] = useState(0);
   const [topBrands, setTopBrands] = useState([]);
   const [brandsError, setBrandsError] = useState(false);
   const [newProducts, setNewProducts] = useState([]);
   const [newProductsLoading, setNewProductsLoading] = useState(true);
+
+  const sportsRailRef = useRef(null);
   const productRailRef = useRef(null);
 
   useEffect(() => {
@@ -440,22 +443,6 @@ function HomePage() {
     return fallbackSports;
   }, [sports]);
 
-  const maxSportStartIndex = Math.max(
-    0,
-    displaySports.length - SPORTS_VISIBLE_COUNT
-  );
-
-  useEffect(() => {
-    setSportStartIndex((prev) => Math.min(prev, maxSportStartIndex));
-  }, [maxSportStartIndex]);
-
-  const visibleSports = useMemo(() => {
-    return displaySports.slice(
-      sportStartIndex,
-      sportStartIndex + SPORTS_VISIBLE_COUNT
-    );
-  }, [displaySports, sportStartIndex]);
-
   const activePromotion = promotions[promotionIndex] || null;
   const showPromotionBar = isAtTop && promotions.length > 0;
   const heroHeight = `calc(100vh - ${
@@ -481,12 +468,16 @@ function HomePage() {
     }));
   }, [topBrands]);
 
-  const handlePrevSport = () => {
-    setSportStartIndex((prev) => Math.max(0, prev - 1));
-  };
+  const scrollSports = (direction) => {
+    if (!sportsRailRef.current) return;
 
-  const handleNextSport = () => {
-    setSportStartIndex((prev) => Math.min(maxSportStartIndex, prev + 1));
+    const firstCard = sportsRailRef.current.querySelector('[data-sport-card="true"]');
+    const scrollAmount = firstCard ? firstCard.clientWidth + 24 : 320;
+
+    sportsRailRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
   };
 
   const scrollProducts = (direction) => {
@@ -508,10 +499,10 @@ function HomePage() {
   return (
     <div className="w-full bg-white text-black">
       <div
-        className={`sticky top-0 z-30 overflow-hidden bg-black text-white transition-[max-height,opacity,transform] duration-300 ${
+        className={`sticky top-0 z-30 overflow-hidden bg-zinc-200 text-black transition-[max-height,opacity,transform] duration-300 ${
           showPromotionBar
-            ? "max-h-[72px] opacity-100 translate-y-0"
-            : "max-h-0 opacity-0 -translate-y-2"
+            ? "max-h-[72px] translate-y-0 opacity-100"
+            : "max-h-0 -translate-y-2 opacity-0"
         }`}
       >
         <div
@@ -520,11 +511,11 @@ function HomePage() {
         >
           {activePromotion ? (
             <div className="flex w-full max-w-6xl items-center justify-center gap-3">
-              <p className="line-clamp-1 text-sm font-semibold tracking-[0.01em] text-white sm:text-base">
+              <p className="line-clamp-1 text-sm font-semibold tracking-[0.01em] text-black sm:text-base">
                 {formatPromotionHeadline(activePromotion)}
               </p>
               {promotions.length > 1 ? (
-                <span className="hidden text-xs text-white/55 sm:inline-flex">
+                <span className="hidden text-xs text-black/55 sm:inline-flex">
                   {promotionIndex + 1}/{promotions.length}
                 </span>
               ) : null}
@@ -548,34 +539,15 @@ function HomePage() {
         </div>
 
         <div
-          className="relative flex items-end px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8 lg:pb-28 xl:px-10"
+          className="relative flex items-end justify-center px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8 lg:pb-28 xl:px-10"
           style={{ minHeight: heroHeight }}
         >
-          <div className="max-w-2xl text-white">
-            <h1 className="text-5xl font-black leading-[0.95] sm:text-6xl lg:text-7xl">
-              Vượt qua
-              <br />
-              giới hạn
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
-              Khám phá thời trang thể thao hiện đại với nhịp điệu mạnh mẽ và trải
-              nghiệm mua sắm cao cấp.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/products"
-                className="inline-flex items-center rounded-full bg-black px-8 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 sm:px-10 sm:py-4 sm:text-base"
-              >
-                Mua ngay
-              </Link>
-              <Link
-                to="/products"
-                className="inline-flex items-center rounded-full border border-white/60 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white hover:text-black sm:px-10 sm:py-4 sm:text-base"
-              >
-                Khám phá thêm
-              </Link>
-            </div>
-          </div>
+          <Link
+            to="/products"
+            className="inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition duration-300 hover:bg-zinc-300 sm:px-7 sm:py-3"
+          >
+            Mua ngay
+          </Link>
         </div>
       </section>
 
@@ -594,58 +566,53 @@ function HomePage() {
             <div className="flex items-center gap-3 self-start lg:self-auto">
               <button
                 type="button"
-                onClick={handlePrevSport}
-                disabled={sportStartIndex === 0}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
-                aria-label="Hiện môn thể thao trước"
+                onClick={() => scrollSports("left")}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800"
+                aria-label="Trượt môn thể thao sang trái"
               >
                 <ArrowLeftIcon />
               </button>
               <button
                 type="button"
-                onClick={handleNextSport}
-                disabled={sportStartIndex >= maxSportStartIndex}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
-                aria-label="Hiện môn thể thao tiếp theo"
+                onClick={() => scrollSports("right")}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-black text-white transition hover:bg-zinc-800"
+                aria-label="Trượt môn thể thao sang phải"
               >
                 <ArrowRightIcon />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-7 lg:gap-5 xl:gap-6">
-            {visibleSports.map((sport) => {
-              const productCount = resolveSportProductCount(sport);
-              return (
-                <Link
-                  key={sport.id}
-                  to={
-                    typeof sport.id === "number"
-                      ? `/products?sportId=${sport.id}`
-                      : "/products"
-                  }
-                  className="group block transition hover:-translate-y-1"
-                >
-                  <div className="aspect-[4/5] overflow-hidden bg-zinc-200">
-                    <img
-                      src={resolveSportCardImage(sport)}
-                      alt={sport.name}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="pt-4 text-center">
-                    <p className="text-sm font-semibold text-black sm:text-[15px] lg:text-base">
-                      {sport.name}
-                    </p>
-                    <p className="mt-2 text-xs font-medium text-zinc-500 sm:text-sm">
-                      {productCount !== null
-                        ? `${productCount} sản phẩm`
-                        : "Đang cập nhật"}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+          <div
+            ref={sportsRailRef}
+            className="flex gap-6 overflow-x-auto pb-4 pr-6 [scrollbar-width:none] snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {displaySports.map((sport) => (
+              <Link
+                key={sport.id}
+                to={
+                  typeof sport.id === "number"
+                    ? `/products?sportId=${sport.id}`
+                    : "/products"
+                }
+                data-sport-card="true"
+                className="group relative block w-[82%] flex-shrink-0 snap-start sm:w-[70%] md:w-[48%] xl:w-[31%]"
+              >
+                <div className="aspect-[4/5] overflow-hidden bg-zinc-200">
+                  <img
+                    src={resolveSportCardImage(sport)}
+                    alt={sport.name}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+                <div className="pt-4">
+                  <p className="text-2xl font-black uppercase tracking-[0.08em] text-black sm:text-3xl">
+                    {sport.name}
+                  </p>
+                </div>
+              </Link>
+            ))}
           </div>
 
           {sportsError && sports.length === 0 ? (
@@ -671,11 +638,11 @@ function HomePage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
             {spotlightBrands.map((item) => (
               <Link key={item.id} to={item.link} className="group block">
-                <div className="relative mb-6 h-80 overflow-hidden bg-zinc-100 sm:h-96 lg:h-[500px]">
+                <div className="relative mb-6 overflow-hidden bg-zinc-100 md:h-96 lg:h-[500px]">
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    className="h-auto w-full object-contain transition duration-500 group-hover:scale-105 md:h-full md:w-full md:object-cover"
                   />
                 </div>
                 <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-zinc-500 sm:text-sm">

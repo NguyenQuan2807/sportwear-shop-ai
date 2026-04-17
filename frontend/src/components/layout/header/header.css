@@ -2,8 +2,6 @@
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
 }
 
 .header-inner {
@@ -14,9 +12,9 @@
 .header-utility-shell {
   position: relative;
   z-index: 80;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.25s ease;
   overflow: visible;
+  background-color: #eeeeee;
 }
 
 .header-utility-visible {
