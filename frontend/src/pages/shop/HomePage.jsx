@@ -44,29 +44,16 @@ const fallbackSpotlightItems = [
 const campaignItems = [
   {
     id: 1,
-    image: "/images/home/campaign7.png",
-    title: "Air Force 1",
-    subtitle: "Biểu tượng bất tử",
+    image: "/images/home/campaign1.jpg",
+    title: "KHÔNG NGỪNG BỎ CUỘC",
     textClass: "text-white",
-    overlay: "bg-black/35",
     link: "/products",
   },
   {
     id: 2,
     image: "/images/home/campaign2.jpg",
-    title: "Pegasus",
-    subtitle: "Chạy với sự tin tưởng",
+    title: "THỂ HIỆN CÁ TÍNH",
     textClass: "text-white",
-    overlay: "bg-black/35",
-    link: "/products",
-  },
-  {
-    id: 3,
-    image: "/images/home/campaign3.jpg",
-    title: "Revolution",
-    subtitle: "Tuyên bố của bạn",
-    textClass: "text-white",
-    overlay: "bg-black/30",
     link: "/products",
   },
 ];
@@ -555,10 +542,7 @@ function HomePage() {
         <div className={sectionInnerClass}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
-                Shop by sport
-              </p>
-              <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-5xl">
+              <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-4xl">
                 Mua sắm theo môn thể thao
               </h2>
             </div>
@@ -603,7 +587,7 @@ function HomePage() {
                   <img
                     src={resolveSportCardImage(sport)}
                     alt={sport.name}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    className="h-full w-full object-cover transition duration-500"
                   />
                 </div>
                 <div className="pt-4">
@@ -627,9 +611,6 @@ function HomePage() {
       <section className={`bg-white ${sectionOuterClass}`}>
         <div className={sectionInnerClass}>
           <div className="mb-12 text-center sm:mb-16">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
-              Spotlight
-            </p>
             <h2 className="text-4xl font-black tracking-tight text-black sm:text-5xl lg:text-6xl">
               Nổi bật
             </h2>
@@ -642,12 +623,9 @@ function HomePage() {
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="h-auto w-full object-contain transition duration-500 group-hover:scale-105 md:h-full md:w-full md:object-cover"
+                    className="h-auto w-full object-contain transition duration-500 md:h-full md:w-full md:object-cover"
                   />
                 </div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-zinc-500 sm:text-sm">
-                  Thương hiệu
-                </p>
                 <h3 className="mb-3 text-2xl font-bold text-black sm:text-3xl">
                   {item.title}
                 </h3>
@@ -673,86 +651,51 @@ function HomePage() {
         </div>
       </section>
 
-      <section className={`bg-white ${sectionOuterClass}`}>
-        <div className={sectionInnerClass}>
-          <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0">
-            <Link
-              to={campaignItems[0].link}
-              className="group relative block min-h-[420px] overflow-hidden lg:min-h-[640px]"
-            >
-              <img
-                src={campaignItems[0].image}
-                alt={campaignItems[0].title}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-              <div
-                className={`absolute inset-0 ${campaignItems[0].overlay} transition duration-500 group-hover:bg-black/45`}
-              />
-              <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8 lg:p-12">
-                <p
-                  className={`mb-3 text-xs font-bold uppercase tracking-[0.24em] ${campaignItems[0].textClass}/80`}
-                >
-                  Campaign
-                </p>
-                <h3
-                  className={`text-4xl font-black ${campaignItems[0].textClass} sm:text-5xl lg:text-6xl`}
-                >
-                  {campaignItems[0].title}
-                </h3>
-                <p
-                  className={`mt-2 text-lg ${campaignItems[0].textClass}/90 sm:text-xl`}
-                >
-                  {campaignItems[0].subtitle}
-                </p>
-              </div>
-            </Link>
+          
+      <section className="bg-white px-0 py-0">
+        <div className="w-full">
+          <div
+            className="grid grid-cols-1 gap-0 md:grid-cols-2"
+            style={{ minHeight: `calc(100vh - ${HEADER_HEIGHT}px)` }}
+          >
+            {campaignItems.slice(0, 2).map((item) => (
+              <Link
+                key={item.id}
+                to={item.link}
+                className="group relative block w-full overflow-hidden aspect-[4/5] md:h-full md:aspect-auto"
+              >
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="absolute inset-0 h-full w-full object-cover transition duration-500"
+                />
 
-            <div className="space-y-8">
-              {campaignItems.slice(1).map((item) => (
-                <Link
-                  key={item.id}
-                  to={item.link}
-                  className="group relative block h-80 overflow-hidden sm:h-96"
-                >
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                  <div
-                    className={`absolute inset-0 ${item.overlay} transition duration-500 group-hover:bg-black/45`}
-                  />
-                  <div className="absolute inset-0 flex flex-col items-start justify-end p-6 sm:p-8">
-                    <p
-                      className={`mb-2 text-xs font-bold uppercase tracking-[0.24em] ${item.textClass}/80`}
-                    >
-                      Campaign
-                    </p>
+                <div
+                  className={`absolute inset-0 ${item.overlay} transition duration-500`}
+                />
+
+                <div className="absolute inset-0 flex items-end p-6 sm:p-8 lg:p-10">
+                  <div>
                     <h3
-                      className={`text-2xl font-black ${item.textClass} sm:text-3xl lg:text-4xl`}
+                      className={`text-3xl font-black uppercase sm:text-3xl lg:text-3xl ${item.textClass}`}
                     >
                       {item.title}
                     </h3>
-                    <p
-                      className={`mt-2 text-base ${item.textClass}/90 sm:text-lg`}
-                    >
+                    <p className={`mt-2 text-sm sm:text-base lg:text-lg ${item.textClass}/90`}>
                       {item.subtitle}
                     </p>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className={`bg-zinc-50 ${sectionOuterClass}`}>
+      <section className={` ${sectionOuterClass}`}>
         <div className={sectionInnerClass}>
           <div className="mb-12 flex items-end justify-between gap-6 sm:mb-16">
             <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.28em] text-zinc-500">
-                New arrivals
-              </p>
               <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-5xl">
                 Sản phẩm mới
               </h2>
@@ -812,7 +755,7 @@ function HomePage() {
                     <img
                       src={resolveProductImage(product)}
                       alt={product?.name || "Sản phẩm"}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover transition duration-500"
                     />
                   </div>
 
