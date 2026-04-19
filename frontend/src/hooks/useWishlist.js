@@ -1,48 +1,143 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "./useAuth";
 import {
-  getWishlistItems,
-  isInWishlist,
-  toggleWishlistItem,
-} from "../utils/wishlistStorage";
+  addWishlistItemApi,
+  deleteWishlistItemApi,
+  getWishlistApi,
+} from "../services/wishlistService";
 
-export default function useWishlist(product = null) {
-  const [wishlistItems, setWishlistItems] = useState(() => getWishlistItems());
+let activeIdentity = null;
+let sharedWishlistItems = [];
+let hasLoadedWishlist = false;
+let pendingWishlistRequest = null;
+const wishlistListeners = new Set();
 
-  const refreshWishlist = useCallback(() => {
-    setWishlistItems(getWishlistItems());
-  }, []);
+const emitWishlistChange = () => {
+  wishlistListeners.forEach((listener) => listener(sharedWishlistItems));
+};
+
+const resolveIdentity = (user) => user?.id || user?.email || user?.username || null;
+
+const resetWishlistStore = (identity) => {
+  activeIdentity = identity;
+  sharedWishlistItems = [];
+  hasLoadedWishlist = false;
+  pendingWishlistRequest = null;
+};
+
+const syncWishlistFromResponse = (response) => {
+  sharedWishlistItems = Array.isArray(response?.data?.items)
+    ? response.data.items
+    : Array.isArray(response?.items)
+    ? response.items
+    : [];
+  hasLoadedWishlist = true;
+  emitWishlistChange();
+  return sharedWishlistItems;
+};
+
+const ensureWishlistLoaded = async (user) => {
+  if (!user) {
+    sharedWishlistItems = [];
+    hasLoadedWishlist = true;
+    emitWishlistChange();
+    return [];
+  }
+
+  if (hasLoadedWishlist) {
+    return sharedWishlistItems;
+  }
+
+  if (!pendingWishlistRequest) {
+    pendingWishlistRequest = getWishlistApi()
+      .then((response) => syncWishlistFromResponse(response))
+      .catch(() => {
+        sharedWishlistItems = [];
+        hasLoadedWishlist = true;
+        emitWishlistChange();
+        return [];
+      })
+      .finally(() => {
+        pendingWishlistRequest = null;
+      });
+  }
+
+  return pendingWishlistRequest;
+};
+
+const useWishlist = (product = null) => {
+  const { user } = useAuth();
+  const identity = useMemo(() => resolveIdentity(user), [user]);
+  const [wishlistItems, setWishlistItems] = useState(sharedWishlistItems);
 
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
+    const listener = (items) => setWishlistItems(items);
+    wishlistListeners.add(listener);
 
-    window.addEventListener("storage", refreshWishlist);
-    window.addEventListener("wishlist:updated", refreshWishlist);
+    if (activeIdentity !== identity) {
+      resetWishlistStore(identity);
+      setWishlistItems([]);
+    }
+
+    ensureWishlistLoaded(user).then(setWishlistItems);
 
     return () => {
-      window.removeEventListener("storage", refreshWishlist);
-      window.removeEventListener("wishlist:updated", refreshWishlist);
+      wishlistListeners.delete(listener);
     };
-  }, [refreshWishlist]);
+  }, [identity, user]);
 
-  const toggleWishlist = useCallback(
-    (nextProduct = product) => {
-      const updated = toggleWishlistItem(nextProduct);
-      setWishlistItems(updated);
-      return updated;
-    },
-    [product]
-  );
+  const isWishlisted = product
+    ? wishlistItems.some((item) => item.id === product.id)
+    : false;
 
-  const isWishlisted = useMemo(() => {
-    if (!product?.id) return false;
-    return isInWishlist(product.id);
-  }, [product, wishlistItems]);
+  const addToWishlist = async (productItem) => {
+    if (!productItem?.id) return;
+    if (!user) {
+      window.location.assign("/login");
+      return;
+    }
+
+    const response = await addWishlistItemApi({ productId: productItem.id });
+    syncWishlistFromResponse(response);
+  };
+
+  const removeFromWishlist = async (productId) => {
+    if (!productId || !user) return;
+    const response = await deleteWishlistItemApi(productId);
+    syncWishlistFromResponse(response);
+  };
+
+  const toggleWishlist = async (productItem) => {
+    if (!productItem?.id) return;
+
+    if (!user) {
+      window.location.assign("/login");
+      return;
+    }
+
+    if (wishlistItems.some((item) => item.id === productItem.id)) {
+      await removeFromWishlist(productItem.id);
+      return;
+    }
+
+    await addToWishlist(productItem);
+  };
+
+  const clearWishlist = () => {
+    sharedWishlistItems = [];
+    hasLoadedWishlist = false;
+    emitWishlistChange();
+  };
 
   return {
     wishlistItems,
     wishlistCount: wishlistItems.length,
     isWishlisted,
+    addToWishlist,
+    removeFromWishlist,
     toggleWishlist,
-    refreshWishlist,
+    clearWishlist,
   };
-}
+};
+
+export default useWishlist;

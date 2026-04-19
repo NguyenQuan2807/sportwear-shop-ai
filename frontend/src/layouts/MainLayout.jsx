@@ -5,10 +5,10 @@ import Footer from "../components/layout/Footer";
 const MainLayout = () => {
   const location = useLocation();
   const isFullBleedPage =
-    location.pathname === "/" || location.pathname === "/products";
+    location.pathname === "/" || location.pathname.startsWith("/products");
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-[#ffffff] text-black">
       <Header />
 
       {isFullBleedPage ? (

@@ -1,55 +1,57 @@
 import { Link } from "react-router-dom";
-import ProductCard from "../../components/product/ProductCard";
+import WishlistProductCard from "../../components/product/WishlistProductCard";
 import useWishlist from "../../hooks/useWishlist";
+
+const EmptyHeartIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-8 w-8">
+    <path
+      d="M12 20.2s-6.7-4.35-9.2-8.28C1.22 9.55 2.1 6.5 4.9 5.45c2.02-.76 3.72.05 4.77 1.4L12 9.2l2.33-2.35c1.05-1.35 2.75-2.16 4.77-1.4 2.8 1.05 3.68 4.1 2.1 6.47C18.7 15.85 12 20.2 12 20.2Z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const WishlistPage = () => {
   const { wishlistItems, wishlistCount } = useWishlist();
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 xl:px-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Wishlist
-          </p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
-            Sản phẩm yêu thích
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Lưu lại những sản phẩm bạn muốn xem lại sau. Wishlist hiện được lưu
-            trực tiếp trên trình duyệt của bạn.
-          </p>
-          <div className="mt-6 inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-            {wishlistCount} sản phẩm
-          </div>
+    <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 xl:py-10">
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight text-black">Sản phẩm yêu thích</h1>
+          {wishlistCount > 0 ? (
+            <p className="mt-2 text-sm text-black/55">{wishlistCount} sản phẩm đã lưu</p>
+          ) : null}
         </div>
-      </section>
+      </div>
 
-      <section className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 xl:px-8">
-        {wishlistItems.length === 0 ? (
-          <div className="rounded-[28px] border border-slate-200 bg-white p-8 text-center shadow-sm">
-            <h2 className="text-2xl font-semibold text-slate-950">
-              Wishlist của bạn đang trống
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-              Hãy thêm sản phẩm từ trang danh sách hoặc quay lại mua sắm để lưu
-              lại các món bạn quan tâm.
-            </p>
-            <Link
-              to="/products"
-              className="mt-6 inline-flex rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Khám phá sản phẩm
-            </Link>
+      {wishlistItems.length === 0 ? (
+        <section className="rounded-[32px] bg-white px-6 py-16 text-center shadow-sm ring-1 ring-black/5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-black/40">
+            <EmptyHeartIcon />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {wishlistItems.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
+          <h2 className="mt-6 text-3xl font-semibold tracking-tight text-black">
+            Danh sách yêu thích của bạn đang trống
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-black/55 sm:text-base">
+            Hãy lưu lại những sản phẩm bạn muốn xem lại sau. Khi tìm thấy món phù hợp,
+            bạn có thể quay lại đây để mua nhanh hơn.
+          </p>
+          <Link
+            to="/products"
+            className="mt-8 inline-flex items-center justify-center rounded-full bg-black px-6 py-4 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            Khám phá sản phẩm
+          </Link>
+        </section>
+      ) : (
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3 xl:gap-8">
+          {wishlistItems.map((product) => (
+            <WishlistProductCard key={product.id} product={product} />
+          ))}
+        </section>
+      )}
     </div>
   );
 };

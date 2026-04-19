@@ -3,8 +3,8 @@ import logo from "../../assets/logo.png";
 
 const Footer = () => {
   return (
-    <footer className="mt-16 bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <footer className="mt-16 text-black">
+      <div className="mx-auto max-w-7xl border-t border-black/10 px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="mb-4 flex items-center gap-3">
@@ -12,47 +12,42 @@ const Footer = () => {
                 src={logo}
                 alt="Sportwear Shop Logo"
                 className="h-12 w-auto object-contain"
-                />
+              />
             </div>
 
-            <p className="max-w-sm text-sm leading-6 text-slate-400">
-              Website thời trang thể thao fullstack tích hợp AI chatbot, quản lý
-              sản phẩm, giỏ hàng, đặt hàng và thanh toán hiện đại.
-            </p>
-
-            <div className="mt-5 space-y-2 text-sm text-slate-300">
-              <p>Địa chỉ: TP. Hồ Chí Minh, Việt Nam</p>
+            <div className="mt-5 space-y-2 text-sm text-black">
+              <p>Địa chỉ: TP. Hà Nội, Việt Nam</p>
               <p>Hotline: 0123 456 789</p>
               <p>Email: support@sportwearshop.vn</p>
             </div>
           </div>
 
           <div>
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-black">
               Điều hướng
             </h3>
-            <div className="space-y-3 text-sm text-slate-300">
-              <Link to="/" className="block hover:text-white">
+            <div className="space-y-3 text-sm text-black">
+              <Link to="/" className="block">
                 Trang chủ
               </Link>
-              <Link to="/products" className="block hover:text-white">
+              <Link to="/products" className="block">
                 Sản phẩm
               </Link>
-              <Link to="/cart" className="block hover:text-white">
+              <Link to="/cart" className="block">
                 Giỏ hàng
               </Link>
-              <Link to="/orders" className="block hover:text-white">
+              <Link to="/orders" className="block">
                 Đơn hàng
               </Link>
             </div>
           </div>
 
           <div>
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-black">
               Hỗ trợ
             </h3>
-            <div className="space-y-3 text-sm text-slate-300">
-              <Link to="/login" className="block hover:text-white">
+            <div className="space-y-3 text-sm text-black">
+              <Link to="/login" className="block">
                 Tài khoản
               </Link>
               <span className="block">Chính sách giao hàng</span>
@@ -62,41 +57,37 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-black">
               Kết nối & thanh toán
             </h3>
 
             <div className="mb-6 flex flex-wrap gap-3">
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-full border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 Facebook
               </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-full border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 Instagram
               </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-full border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 TikTok
               </span>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 COD
               </span>
-              <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 VNPay
               </span>
-              <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 MoMo
               </span>
-              <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+              <span className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-2 text-sm text-black">
                 Banking
               </span>
             </div>
           </div>
-        </div>
-
-        <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">
-          © 2026 Sportwear Shop AI. All rights reserved.
         </div>
       </div>
     </footer>

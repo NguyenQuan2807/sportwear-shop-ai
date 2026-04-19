@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { productUrl, visibleNavItems } from "./header.data";
 
-const TOP_THRESHOLD = 8;
+const SHOW_TOP_THRESHOLD = 8;
+const HIDE_TOP_THRESHOLD = 42;
 
 const useHeaderState = () => {
   const location = useLocation();
@@ -44,11 +45,29 @@ const useHeaderState = () => {
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsAtTop(window.scrollY <= TOP_THRESHOLD);
+    let ticking = false;
+
+    const updateScrollState = () => {
+      const currentScrollY = window.scrollY;
+
+      setIsAtTop((prev) => {
+        if (prev) {
+          return currentScrollY <= HIDE_TOP_THRESHOLD;
+        }
+
+        return currentScrollY <= SHOW_TOP_THRESHOLD;
+      });
+
+      ticking = false;
     };
 
-    handleScroll();
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateScrollState);
+    };
+
+    updateScrollState();
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", handleScroll);

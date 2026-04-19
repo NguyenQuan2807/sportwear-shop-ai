@@ -7,253 +7,234 @@ const InputField = ({
   onChange,
   placeholder,
   required = false,
+  helperText,
+  type = "text",
+  rightAdornment = null,
 }) => (
   <div>
-    <label className="mb-2 block text-sm font-semibold text-slate-700">
-      {label}
-    </label>
-    <input
-      type="text"
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      required={required}
-      className="h-12 w-full rounded-[20px] border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-200"
-    />
+    {label ? <label className="mb-2 block text-sm font-medium text-black/55">{label}</label> : null}
+    <div className="relative">
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className="h-14 w-full rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black"
+      />
+      {rightAdornment ? (
+        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+          {rightAdornment}
+        </div>
+      ) : null}
+    </div>
+    {helperText ? <p className="mt-2 text-sm text-black/45">{helperText}</p> : null}
   </div>
 );
 
-const PaymentMethodCard = ({
-  title,
-  description,
-  active,
-  disabled = false,
-  icon,
-  badge,
-  onClick,
-}) => (
+const SectionTitle = ({ children }) => (
+  <h2 className="text-[32px] font-semibold tracking-tight text-black">{children}</h2>
+);
+
+const PaymentOption = ({ active, icon, title, subtitle, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    disabled={disabled}
-    className={`w-full rounded-[24px] border p-5 text-left transition ${
-      active
-        ? "border-slate-900 bg-slate-900 text-white shadow-xl shadow-slate-200"
-        : disabled
-        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+    className={`flex w-full items-center gap-4 rounded-2xl border px-5 py-5 text-left transition ${
+      active ? "border-black shadow-[inset_0_0_0_1px_#000]" : "border-black/15 hover:border-black/35"
     }`}
   >
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex gap-4">
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-            active
-              ? "bg-white/10 text-white"
-              : disabled
-              ? "bg-white text-slate-400"
-              : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {icon}
-        </div>
-
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-base font-black tracking-tight">{title}</h4>
-            <span
-              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
-                active
-                  ? "bg-white/10 text-white"
-                  : disabled
-                  ? "bg-white text-slate-400"
-                  : "bg-emerald-50 text-emerald-600"
-              }`}
-            >
-              {badge}
-            </span>
-          </div>
-          <p
-            className={`mt-2 text-sm leading-6 ${
-              active ? "text-white/70" : disabled ? "text-slate-400" : "text-slate-500"
-            }`}
-          >
-            {description}
-          </p>
-        </div>
-      </div>
-
-      <div
-        className={`mt-1 h-5 w-5 rounded-full border-2 ${
-          active ? "border-white bg-white" : "border-slate-300"
-        }`}
-      >
-        {active ? (
-          <div className="m-[3px] h-2.5 w-2.5 rounded-full bg-slate-900" />
-        ) : null}
-      </div>
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/5 text-black">
+      {icon}
+    </div>
+    <div className="min-w-0 flex-1">
+      <div className="text-xl font-semibold text-black">{title}</div>
+      <div className="mt-1 text-sm text-black/55">{subtitle}</div>
     </div>
   </button>
-);
-
-const CashIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 8.25h19.5v7.5H2.25v-7.5Zm3.75 2.25h.008v.008H6v-.008Zm0 3h.008v.008H6v-.008ZM18 12a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"
-    />
-  </svg>
-);
-
-const VnpayIcon = () => (
-  <span className="text-sm font-black tracking-tight">VNP</span>
-);
-
-const MomoIcon = () => (
-  <span className="text-sm font-black tracking-tight">MM</span>
 );
 
 const CheckoutForm = ({
   formData,
   submitting,
   onChange,
+  onToggleBilling,
   onSelectPayment,
   onSubmit,
 }) => {
   return (
-    <section>
-      <form
-        onSubmit={onSubmit}
-        className="space-y-6 rounded-[32px] border border-slate-200/70 bg-white p-6 shadow-lg shadow-slate-200/50 sm:p-8"
-      >
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">
-            Shipping Information
-          </p>
-          <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-            Thông tin nhận hàng
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Vui lòng nhập chính xác thông tin để đơn hàng được xử lý nhanh hơn.
-          </p>
-        </div>
+    <form onSubmit={onSubmit} className="space-y-10">
+      <section className="border-b border-black/10 pb-10">
+        <SectionTitle>Giao hàng</SectionTitle>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="mt-7 space-y-6">
           <InputField
-            label="Tên người nhận"
-            name="receiverName"
-            value={formData.receiverName}
+            label="Email *"
+            name="email"
+            value={formData.email}
             onChange={onChange}
-            placeholder="Nhập tên người nhận"
+            placeholder="Nhập email"
             required
-          />
-
-          <InputField
-            label="Số điện thoại"
-            name="receiverPhone"
-            value={formData.receiverPhone}
-            onChange={onChange}
-            placeholder="Nhập số điện thoại"
-            required
-          />
-
-          <InputField
-            label="Địa chỉ giao hàng"
-            name="shippingAddress"
-            value={formData.shippingAddress}
-            onChange={onChange}
-            placeholder="Nhập địa chỉ giao hàng"
-            required
+            type="email"
+            helperText="Sau khi hoàn tất thanh toán, bạn sẽ nhận được email xác nhận."
           />
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Ghi chú
-            </label>
-            <textarea
-              name="note"
-              value={formData.note}
-              onChange={onChange}
-              placeholder="Ghi chú cho đơn hàng"
-              rows="4"
-              className="w-full rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-200"
-            />
+            <p className="mb-4 text-[28px] font-medium tracking-tight text-black">
+              Điền tên của bạn và địa chỉ nhận hàng
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <InputField
+                name="firstName"
+                value={formData.firstName}
+                onChange={onChange}
+                placeholder="Tên của bạn *"
+                required
+              />
+              <InputField
+                name="lastName"
+                value={formData.lastName}
+                onChange={onChange}
+                placeholder="Họ của bạn *"
+                required
+              />
+            </div>
           </div>
+
+          <InputField
+            name="shippingAddress"
+            value={formData.shippingAddress}
+            onChange={onChange}
+            placeholder="Địa chỉ nhận hàng *"
+            required
+          />
+
+          <button
+            type="button"
+            className="text-[17px] font-medium text-black underline underline-offset-4"
+          >
+            Enter address manually
+          </button>
+
+          <InputField
+            name="receiverPhone"
+            value={formData.receiverPhone}
+            onChange={onChange}
+            placeholder="Số điện thoại *"
+            required
+            helperText="Người vận chuyển có thể liên hệ với bạn để xác nhận việc giao hàng."
+          />
+
+          {/* <label className="inline-flex items-center gap-3 text-[17px] text-black">
+            <input
+              type="checkbox"
+              checked={Boolean(formData.billingSameAsShipping)}
+              onChange={onToggleBilling}
+              className="h-5 w-5 rounded border-black/20 text-black focus:ring-black"
+            />
+            <span>Billing matches shipping address</span>
+          </label> */}
         </div>
+      </section>
 
-        <div className="rounded-[28px] border border-slate-200 p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">
-            Payment Method
-          </p>
-          <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-            Chọn phương thức thanh toán
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Giao diện đã được chuẩn bị sẵn cho COD, VNPay và MoMo. Hiện tại luồng đặt
-            hàng thật đang chạy với COD.
-          </p>
+      {/* <section className="border-b border-black/10 pb-10">
+        <SectionTitle>Shipping</SectionTitle>
 
-          <div className="mt-5 grid gap-4">
-            <PaymentMethodCard
-              title="Thanh toán khi nhận hàng (COD)"
-              description="Thanh toán trực tiếp khi đơn hàng được giao đến bạn."
-              active={formData.paymentMethod === "COD"}
-              disabled={false}
-              icon={<CashIcon />}
-              badge="Available"
-              onClick={() => onSelectPayment("COD")}
+        <div className="mt-7 space-y-4">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-2xl border border-black px-5 py-5 text-left"
+          >
+            <div>
+              <div className="text-xl font-semibold text-black">Standard Delivery</div>
+              <div className="mt-1 text-sm text-black/55">Dự kiến giao trong 2-5 ngày làm việc.</div>
+            </div>
+            <div className="text-lg font-semibold text-black">Đã chọn</div>
+          </button>
+        </div>
+      </section> */}
+
+      <section className="space-y-6">
+        <SectionTitle>Phương thức thanh toán</SectionTitle>
+
+        {/* <div>
+          <p className="mb-4 text-[28px] font-medium tracking-tight text-black">Have a promo code?</p>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              type="text"
+              placeholder="Promo"
+              className="h-14 flex-1 rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black"
             />
-
-            <PaymentMethodCard
-              title="VNPay"
-              description="Đã chừa sẵn UI để tích hợp redirect thanh toán VNPay ở bước tiếp theo."
-              active={formData.paymentMethod === "VNPAY"}
-              disabled
-              icon={<VnpayIcon />}
-              badge="Coming Soon"
-              onClick={() => onSelectPayment("VNPAY")}
-            />
-
-            <PaymentMethodCard
-              title="MoMo"
-              description="Đã chừa sẵn UI để tích hợp thanh toán MoMo khi backend sẵn sàng."
-              active={formData.paymentMethod === "MOMO"}
-              disabled
-              icon={<MomoIcon />}
-              badge="Coming Soon"
-              onClick={() => onSelectPayment("MOMO")}
-            />
+            <button
+              type="button"
+              className="inline-flex h-14 items-center justify-center rounded-full border border-black/15 px-8 text-[17px] font-medium text-black transition hover:border-black/35"
+            >
+              Apply
+            </button>
           </div>
+          <p className="mt-2 text-sm text-black/45">Limit 1 promo per order.</p>
+        </div> */}
+
+        <div className="space-y-4">
+          <PaymentOption
+            title="Thanh toán khi nhận hàng (COD)"
+            subtitle="Thanh toán bằng tiền mặt khi đơn hàng được giao đến bạn."
+            active={formData.paymentMethod === "COD"}
+            onClick={() => onSelectPayment("COD")}
+            icon={<CashIcon />}
+          />
+
+          <PaymentOption
+            title="MoMo"
+            subtitle="Thanh toán qua ví điện tử MoMo."
+            active={formData.paymentMethod === "MOMO"}
+            onClick={() => onSelectPayment("MOMO")}
+            icon={<MomoIcon />}
+          />
+
+          <PaymentOption
+            title="VNPay"
+            subtitle="Thanh toán online qua cổng VNPay."
+            active={formData.paymentMethod === "VNPAY"}
+            onClick={() => onSelectPayment("VNPAY")}
+            icon={<VnpayIcon />}
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-full bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Đang xử lý..." : "Xác nhận đặt hàng"}
           </button>
 
           <Link
             to="/cart"
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+            className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-6 py-4 text-base font-semibold text-black transition hover:border-black"
           >
             Quay lại giỏ hàng
           </Link>
         </div>
-      </form>
-    </section>
+      </section>
+    </form>
   );
 };
+
+const CashIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+    <path d="M2.25 8.25h19.5v7.5H2.25v-7.5Zm3.75 2.25h.008v.008H6v-.008Zm0 3h.008v.008H6v-.008ZM18 12a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const MomoIcon = () => (
+  <div className="rounded-full bg-[#ae2070] px-2 py-1 text-xs font-black tracking-tight text-white">momo</div>
+);
+
+const VnpayIcon = () => (
+  <div className="rounded-full bg-[#0055ff] px-2 py-1 text-xs font-black tracking-tight text-white">VNPay</div>
+);
 
 export default CheckoutForm;

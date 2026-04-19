@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import CheckoutForm from "../../features/checkout/CheckoutForm";
-import CheckoutHero from "../../features/checkout/CheckoutHero";
 import OrderSummary from "../../features/checkout/OrderSummary";
 import { useCheckout } from "../../features/checkout/useCheckout";
 
@@ -22,29 +21,26 @@ const CheckoutIcon = () => (
 );
 
 const CheckoutLoading = () => (
-  <div className="space-y-6">
-    <div className="h-5 w-44 animate-pulse rounded bg-slate-200" />
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="h-8 w-56 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 grid gap-4">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-14 animate-pulse rounded-2xl bg-slate-200"
-            />
-          ))}
-        </div>
+  <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 xl:py-10">
+    <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
+      <div className="space-y-10">
+        {Array.from({ length: 3 }).map((_, blockIndex) => (
+          <div key={blockIndex} className="border-b border-black/10 pb-10">
+            <div className="h-10 w-40 animate-pulse rounded bg-black/6" />
+            <div className="mt-6 grid gap-4">
+              {Array.from({ length: 4 }).map((__, index) => (
+                <div key={index} className="h-14 animate-pulse rounded-2xl bg-black/6" />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="h-8 w-40 animate-pulse rounded bg-slate-200" />
-        <div className="mt-6 space-y-4">
+      <div className="rounded-[28px] bg-white p-7 shadow-sm ring-1 ring-black/5">
+        <div className="h-10 w-40 animate-pulse rounded bg-black/6" />
+        <div className="mt-8 space-y-4">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-16 animate-pulse rounded-2xl bg-slate-200"
-            />
+            <div key={index} className="h-5 animate-pulse rounded bg-black/6" />
           ))}
         </div>
       </div>
@@ -53,29 +49,29 @@ const CheckoutLoading = () => (
 );
 
 const EmptyCartState = () => (
-  <section className="rounded-[32px] border border-slate-200/70 bg-white px-6 py-12 text-center shadow-lg shadow-slate-200/50 sm:px-8">
-    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+  <section className="mx-auto max-w-4xl rounded-[32px] border border-black/10 bg-white px-6 py-12 text-center shadow-sm sm:px-8">
+    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-black/5 text-black/35">
       <CheckoutIcon />
     </div>
 
-    <h2 className="mt-6 text-3xl font-black tracking-tight text-slate-900">
+    <h2 className="mt-6 text-3xl font-semibold tracking-tight text-black">
       Không thể thanh toán vì giỏ hàng đang trống
     </h2>
-    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
+    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-black/55 sm:text-base">
       Hãy thêm sản phẩm vào giỏ hàng trước khi tiến hành thanh toán.
     </p>
 
     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
       <Link
         to="/products"
-        className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800"
+        className="inline-flex items-center justify-center rounded-full bg-black px-6 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
       >
         Xem sản phẩm
       </Link>
 
       <Link
         to="/cart"
-        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+        className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-6 py-3.5 text-sm font-semibold text-black transition hover:border-black"
       >
         Quay lại giỏ hàng
       </Link>
@@ -94,8 +90,10 @@ const CheckoutPage = () => {
     totalQuantity,
     subTotalAmount,
     discountAmount,
+    shippingFee,
     totalAmount,
     handleChange,
+    handleToggleBilling,
     handleSelectPayment,
     handleSubmitOrder,
   } = useCheckout();
@@ -109,32 +107,25 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="space-y-8 pb-8">
-      <CheckoutHero
-        itemCount={items.length}
-        totalQuantity={totalQuantity}
-        subTotalAmount={subTotalAmount}
-        discountAmount={discountAmount}
-        totalAmount={totalAmount}
-      />
-
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 xl:py-10">
       {successMessage ? (
-        <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 shadow-sm">
+        <div className="mb-5 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-medium text-green-700 shadow-sm">
           {successMessage}
         </div>
       ) : null}
 
       {errorMessage ? (
-        <div className="rounded-[24px] border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-600 shadow-sm">
+        <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-600 shadow-sm">
           {errorMessage}
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
         <CheckoutForm
           formData={formData}
           submitting={submitting}
           onChange={handleChange}
+          onToggleBilling={handleToggleBilling}
           onSelectPayment={handleSelectPayment}
           onSubmit={handleSubmitOrder}
         />
@@ -144,6 +135,7 @@ const CheckoutPage = () => {
           totalQuantity={totalQuantity}
           subTotalAmount={subTotalAmount}
           discountAmount={discountAmount}
+          shippingFee={shippingFee}
           totalAmount={totalAmount}
         />
       </div>

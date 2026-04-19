@@ -4,14 +4,18 @@ import { getCartApi } from "../../services/cartService";
 import { createOrderApi } from "../../services/orderService";
 
 const DEFAULT_FORM = {
+  email: "",
+  firstName: "",
+  lastName: "",
   shippingAddress: "",
-  receiverName: "",
   receiverPhone: "",
   note: "",
   paymentMethod: "COD",
+  billingSameAsShipping: true,
 };
 
 const PHONE_REGEX = /^(0|\+84)[0-9]{9,10}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const useCheckout = () => {
   const navigate = useNavigate();
@@ -47,15 +51,26 @@ export const useCheckout = () => {
   const subTotalAmount = cart?.subTotalAmount || 0;
   const discountAmount = cart?.discountAmount || 0;
   const totalAmount = cart?.totalAmount || 0;
+  const shippingFee = Math.max(totalAmount - (subTotalAmount - discountAmount), 0);
 
   const totalQuantity = useMemo(
     () => items.reduce((sum, item) => sum + (item.quantity || 0), 0),
     [items]
   );
 
+  const receiverName = `${formData.firstName} ${formData.lastName}`.trim();
+
   const validateForm = () => {
-    if (!formData.receiverName.trim()) {
-      return "Vui lòng nhập tên người nhận";
+    if (!EMAIL_REGEX.test(formData.email.trim())) {
+      return "Email không hợp lệ";
+    }
+
+    if (!formData.firstName.trim()) {
+      return "Vui lòng nhập tên";
+    }
+
+    if (!formData.lastName.trim()) {
+      return "Vui lòng nhập họ";
     }
 
     if (!PHONE_REGEX.test(formData.receiverPhone.trim())) {
@@ -71,7 +86,7 @@ export const useCheckout = () => {
     }
 
     if (formData.paymentMethod !== "COD") {
-      return "VNPay và MoMo đang được chuẩn bị giao diện. Hiện tại bạn vui lòng dùng COD.";
+      return "Momo và VNPay đã có UI chọn phương thức, nhưng backend thanh toán online chưa được tích hợp xong. Hiện tại bạn vui lòng dùng COD để tạo đơn thật.";
     }
 
     return "";
@@ -85,9 +100,14 @@ export const useCheckout = () => {
     }));
   };
 
-  const handleSelectPayment = (method) => {
-    if (method !== "COD") return;
+  const handleToggleBilling = () => {
+    setFormData((prev) => ({
+      ...prev,
+      billingSameAsShipping: !prev.billingSameAsShipping,
+    }));
+  };
 
+  const handleSelectPayment = (method) => {
     setFormData((prev) => ({
       ...prev,
       paymentMethod: method,
@@ -108,7 +128,13 @@ export const useCheckout = () => {
       setErrorMessage("");
       setSuccessMessage("");
 
-      await createOrderApi(formData);
+      await createOrderApi({
+        shippingAddress: formData.shippingAddress,
+        receiverName,
+        receiverPhone: formData.receiverPhone,
+        note: formData.note,
+        paymentMethod: formData.paymentMethod,
+      });
 
       setSuccessMessage("Đặt hàng thành công");
 
@@ -135,8 +161,10 @@ export const useCheckout = () => {
     totalQuantity,
     subTotalAmount,
     discountAmount,
+    shippingFee,
     totalAmount,
     handleChange,
+    handleToggleBilling,
     handleSelectPayment,
     handleSubmitOrder,
   };

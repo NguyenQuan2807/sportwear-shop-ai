@@ -1,4 +1,6 @@
 .header-shell {
+  --header-motion-duration: 280ms;
+  --header-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -9,24 +11,34 @@
   z-index: 40;
 }
 
-.header-utility-shell {
+.header-utility-wrap {
   position: relative;
   z-index: 80;
-  transition: max-height 0.25s ease, opacity 0.2s ease, transform 0.25s ease;
-  overflow: visible;
+  will-change: max-height, opacity, transform;
+  transition:
+    max-height var(--header-motion-duration) var(--header-motion-ease),
+    opacity 220ms ease,
+    transform var(--header-motion-duration) var(--header-motion-ease);
+}
+
+.header-utility-shell {
   background-color: #eeeeee;
+  transform: translateZ(0);
 }
 
 .header-utility-visible {
   max-height: 36px;
   opacity: 1;
   transform: translateY(0);
+  overflow: visible;
 }
 
 .header-utility-hidden {
   max-height: 0;
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-8px);
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .header-utility-link {
@@ -188,17 +200,57 @@
 .header-dropdown-link:hover {
   background: rgba(148, 163, 184, 0.1);
   color: #020617;
-  }
+}
 
 .header-dropdown-danger:hover {
   background: rgba(239, 68, 68, 0.1);
   color: #dc2626;
 }
 
+.header-mega-wrap {
+  overflow: hidden;
+  will-change: max-height, opacity, transform;
+  transition:
+    max-height var(--header-motion-duration) var(--header-motion-ease),
+    opacity 220ms ease,
+    transform var(--header-motion-duration) var(--header-motion-ease);
+}
+
+.header-mega-wrap.is-open {
+  max-height: 520px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.header-mega-wrap.is-closed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
 .header-mega-shell {
   border-top: 1px solid rgba(15, 23, 42, 0.06);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 24px 56px rgba(15, 23, 42, 0.09);
+  transform: translateZ(0);
+}
+
+.header-mega-content {
+  animation: headerMegaContentIn 240ms var(--header-motion-ease);
+}
+
+@keyframes headerMegaContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-mega-col-title {
@@ -240,7 +292,7 @@
   font-size: 13px;
   font-weight: 700;
   color: #020617;
-  }
+}
 
 .header-mobile-search {
   border-radius: 9999px;

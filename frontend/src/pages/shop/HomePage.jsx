@@ -776,46 +776,6 @@ function HomePage() {
           )}
         </div>
       </section>
-
-      <section className={`bg-black text-white ${sectionOuterClass}`}>
-        <div className="mx-auto w-full max-w-[1120px] text-center">
-          <div className="mb-4 flex justify-center text-white">
-            <MailIcon />
-          </div>
-          <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">
-            Nhận tin khuyến mãi
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
-            Đăng ký để nhận thông tin về bộ sưu tập mới, ưu đãi nổi bật và cảm
-            hứng thời trang thể thao mỗi tuần.
-          </p>
-
-          <form
-            onSubmit={handleNewsletterSubmit}
-            className="mt-8 flex flex-col gap-4 sm:flex-row"
-          >
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Nhập email của bạn"
-              className="h-14 w-full rounded-full border border-white/15 bg-white px-6 text-sm text-black outline-none transition placeholder:text-zinc-400 focus:border-white sm:text-base"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-14 shrink-0 items-center justify-center rounded-full bg-white px-8 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:text-base"
-            >
-              Đăng ký
-            </button>
-          </form>
-
-          {submitted ? (
-            <p className="mt-4 text-sm text-emerald-300">
-              Đăng ký thành công. Cảm ơn bạn đã quan tâm.
-            </p>
-          ) : null}
-        </div>
-      </section>
     </div>
   );
 }

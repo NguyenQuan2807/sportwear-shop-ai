@@ -101,9 +101,11 @@ public class ProductServiceImpl implements ProductService {
         response.setName(product.getName());
         response.setSlug(product.getSlug());
         response.setDescription(product.getDescription());
+        response.setCategoryId(product.getCategory().getId());
         response.setCategoryName(product.getCategory().getName());
-        response.setBrandName(product.getBrand().getName());
+        response.setSportId(product.getSport().getId());
         response.setSportName(product.getSport().getName());
+        response.setBrandName(product.getBrand().getName());
         response.setGender(product.getGender().name());
         response.setMaterial(product.getMaterial());
         response.setThumbnailUrl(product.getThumbnailUrl());

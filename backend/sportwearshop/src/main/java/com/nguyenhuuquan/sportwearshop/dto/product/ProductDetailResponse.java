@@ -12,9 +12,11 @@ public class ProductDetailResponse {
     private String name;
     private String slug;
     private String description;
+    private Long categoryId;
     private String categoryName;
-    private String brandName;
+    private Long sportId;
     private String sportName;
+    private String brandName;
     private String gender;
     private String material;
     private String thumbnailUrl;
