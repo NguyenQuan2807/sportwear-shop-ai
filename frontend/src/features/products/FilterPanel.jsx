@@ -1,173 +1,171 @@
-import { SORT_OPTIONS } from "./constants";
+import { useMemo, useState } from "react";
+import { GENDER_OPTIONS, PRICE_OPTIONS } from "./constants";
 
-const FilterBlock = ({ label, children }) => (
-  <div className="space-y-2">
-    <label className="block text-sm font-semibold text-slate-800">{label}</label>
-    {children}
+const ChevronIcon = ({ open = false }) => (
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+    aria-hidden="true"
+  >
+    <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const CheckboxItem = ({ label, checked, onToggle }) => (
+  <label className="flex cursor-pointer items-center gap-3 py-2.5 text-sm text-black">
+    <input type="checkbox" checked={checked} onChange={onToggle} className="h-4 w-4 rounded border-black/20" />
+    <span>{label}</span>
+  </label>
+);
+
+const FilterSection = ({ title, open, onToggle, children }) => (
+  <div className="border-b border-black/10 py-4 last:border-b-0">
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-center justify-between gap-3 text-left"
+    >
+      <span className="text-sm font-semibold text-black">{title}</span>
+      <ChevronIcon open={open} />
+    </button>
+
+    {open ? <div className="pt-3">{children}</div> : null}
   </div>
 );
 
 const FilterPanel = ({
-  mobile = false,
   formValues,
   categories,
   brands,
   sports,
   filterLoading,
-  onInputChange,
-  onSearchSubmit,
-  onSelectChange,
-  onReset,
+  onApplyFilters,
 }) => {
-  return (
-    <div
-      className={`rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm ${
-        mobile ? "" : "sticky top-24"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Filter Panel
-          </p>
-          <h2 className="mt-2 text-xl font-semibold text-slate-950">
-            Bộ lọc sản phẩm
-          </h2>
-        </div>
+  const [openSections, setOpenSections] = useState({
+    gender: true,
+    promotion: true,
+    price: true,
+    brand: true,
+    sport: true,
+    category: true,
+  });
 
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-sm font-semibold text-slate-500 transition hover:text-slate-900"
-        >
-          Xóa lọc
-        </button>
+  const selectedPriceValue = useMemo(() => {
+    const matched = PRICE_OPTIONS.find(
+      (item) =>
+        String(item.min) === String(formValues.minPrice || "") &&
+        String(item.max) === String(formValues.maxPrice || "")
+    );
+    return matched?.value || "";
+  }, [formValues.minPrice, formValues.maxPrice]);
+
+  const toggleSection = (key) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleSingleChoice = (name, currentValue, nextValue) => {
+    const value = String(currentValue) === String(nextValue) ? "" : nextValue;
+    onApplyFilters({ [name]: value });
+  };
+
+  const togglePrice = (option) => {
+    if (selectedPriceValue === option.value) {
+      onApplyFilters({ minPrice: "", maxPrice: "" });
+      return;
+    }
+
+    onApplyFilters({ minPrice: option.min, maxPrice: option.max });
+  };
+
+  return (
+    <div className="h-full bg-white">
+      <div className="border-b border-black/10 px-4 py-4 sm:px-5 lg:px-6">
+        <h2 className="text-base font-semibold text-black">Bộ lọc</h2>
       </div>
 
-      <form onSubmit={onSearchSubmit} className="mt-6 space-y-5">
-        <FilterBlock label="Từ khóa">
-          <input
-            type="text"
-            name="keyword"
-            value={formValues.keyword}
-            onChange={onInputChange}
-            placeholder="Nhập tên sản phẩm..."
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+      <div className="px-4 pb-6 sm:px-5 lg:px-6">
+        <FilterSection title="Giới tính" open={openSections.gender} onToggle={() => toggleSection("gender")}>
+          {GENDER_OPTIONS.map((item) => (
+            <CheckboxItem
+              key={item.value}
+              label={item.label}
+              checked={formValues.gender === item.value}
+              onToggle={() => toggleSingleChoice("gender", formValues.gender, item.value)}
+            />
+          ))}
+        </FilterSection>
+
+        <FilterSection title="Khuyến mãi" open={openSections.promotion} onToggle={() => toggleSection("promotion")}>
+          <CheckboxItem
+            label="Đang khuyến mãi"
+            checked={formValues.promotionOnly === "true"}
+            onToggle={() =>
+              onApplyFilters({
+                promotionOnly: formValues.promotionOnly === "true" ? "" : "true",
+              })
+            }
           />
-        </FilterBlock>
+        </FilterSection>
 
-        <FilterBlock label="Danh mục">
-          <select
-            name="categoryId"
-            value={formValues.categoryId}
-            onChange={onSelectChange}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-          >
-            <option value="">Tất cả danh mục</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </FilterBlock>
-
-        <FilterBlock label="Thương hiệu">
-          <select
-            name="brandId"
-            value={formValues.brandId}
-            onChange={onSelectChange}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-          >
-            <option value="">Tất cả thương hiệu</option>
-            {brands.map((brand) => (
-              <option key={brand.id} value={brand.id}>
-                {brand.name}
-              </option>
-            ))}
-          </select>
-        </FilterBlock>
-
-        <FilterBlock label="Môn thể thao">
-          <select
-            name="sportId"
-            value={formValues.sportId}
-            onChange={onSelectChange}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-          >
-            <option value="">Tất cả môn thể thao</option>
-            {sports.map((sport) => (
-              <option key={sport.id} value={sport.id}>
-                {sport.name}
-              </option>
-            ))}
-          </select>
-        </FilterBlock>
-
-        <div className="grid grid-cols-2 gap-3">
-          <FilterBlock label="Giá từ">
-            <input
-              type="number"
-              min="0"
-              name="minPrice"
-              value={formValues.minPrice}
-              onChange={onInputChange}
-              placeholder="0"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
+        <FilterSection title="Giá" open={openSections.price} onToggle={() => toggleSection("price")}>
+          {PRICE_OPTIONS.map((item) => (
+            <CheckboxItem
+              key={item.value}
+              label={item.label}
+              checked={selectedPriceValue === item.value}
+              onToggle={() => togglePrice(item)}
             />
-          </FilterBlock>
+          ))}
+        </FilterSection>
 
-          <FilterBlock label="Đến">
-            <input
-              type="number"
-              min="0"
-              name="maxPrice"
-              value={formValues.maxPrice}
-              onChange={onInputChange}
-              placeholder="9999999"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-            />
-          </FilterBlock>
-        </div>
+        <FilterSection title="Hãng" open={openSections.brand} onToggle={() => toggleSection("brand")}>
+          {filterLoading ? (
+            <p className="py-2 text-sm text-black/45">Đang tải...</p>
+          ) : (
+            brands.map((item) => (
+              <CheckboxItem
+                key={item.id}
+                label={item.name}
+                checked={String(formValues.brandId) === String(item.id)}
+                onToggle={() => toggleSingleChoice("brandId", formValues.brandId, String(item.id))}
+              />
+            ))
+          )}
+        </FilterSection>
 
-        <FilterBlock label="Sắp xếp">
-          <select
-            name="sort"
-            value={formValues.sort}
-            onChange={onSelectChange}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                Sắp xếp: {option.label}
-              </option>
-            ))}
-          </select>
-        </FilterBlock>
+        <FilterSection title="Môn thể thao" open={openSections.sport} onToggle={() => toggleSection("sport")}>
+          {filterLoading ? (
+            <p className="py-2 text-sm text-black/45">Đang tải...</p>
+          ) : (
+            sports.map((item) => (
+              <CheckboxItem
+                key={item.id}
+                label={item.name}
+                checked={String(formValues.sportId) === String(item.id)}
+                onToggle={() => toggleSingleChoice("sportId", formValues.sportId, String(item.id))}
+              />
+            ))
+          )}
+        </FilterSection>
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            className="inline-flex flex-1 items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800"
-          >
-            Áp dụng
-          </button>
-
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Đặt lại
-          </button>
-        </div>
-
-        {filterLoading ? (
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-            Đang tải dữ liệu bộ lọc...
-          </div>
-        ) : null}
-      </form>
+        <FilterSection title="Danh mục" open={openSections.category} onToggle={() => toggleSection("category")}>
+          {filterLoading ? (
+            <p className="py-2 text-sm text-black/45">Đang tải...</p>
+          ) : (
+            categories.map((item) => (
+              <CheckboxItem
+                key={item.id}
+                label={item.name}
+                checked={String(formValues.categoryId) === String(item.id)}
+                onToggle={() => toggleSingleChoice("categoryId", formValues.categoryId, String(item.id))}
+              />
+            ))
+          )}
+        </FilterSection>
+      </div>
     </div>
   );
 };

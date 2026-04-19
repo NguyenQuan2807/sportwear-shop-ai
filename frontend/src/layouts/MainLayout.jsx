@@ -4,13 +4,14 @@ import Footer from "../components/layout/Footer";
 
 const MainLayout = () => {
   const location = useLocation();
-  const isHomePage = location.pathname === "/";
+  const isFullBleedPage =
+    location.pathname === "/" || location.pathname === "/products";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header />
 
-      {isHomePage ? (
+      {isFullBleedPage ? (
         <main className="min-h-[60vh]">
           <Outlet />
         </main>

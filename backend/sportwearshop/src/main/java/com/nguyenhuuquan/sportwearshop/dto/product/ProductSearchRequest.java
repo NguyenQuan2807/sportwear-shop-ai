@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.dto.product;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,6 +11,8 @@ public class ProductSearchRequest {
     private Long categoryId;
     private Long brandId;
     private Long sportId;
+    private Gender gender;
+    private Boolean promotionOnly = false;
     private Double minPrice;
     private Double maxPrice;
     private String sort = "newest";

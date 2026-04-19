@@ -21,6 +21,7 @@ public class ProductResponse {
     private Double minPrice;
     private Double maxPrice;
     private Boolean inStock;
+    private Integer colorCount;
 
     private Double originalMinPrice;
     private Double originalMaxPrice;

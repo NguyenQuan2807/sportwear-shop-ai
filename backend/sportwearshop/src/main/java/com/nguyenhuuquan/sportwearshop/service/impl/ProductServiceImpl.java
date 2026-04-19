@@ -25,6 +25,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,16 +51,20 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductPageResponse getAllProducts(ProductSearchRequest request) {
-        Sort sort = buildSort(request.getSort());
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
-
         Specification<Product> specification = ProductSpecification.isActive()
                 .and(ProductSpecification.hasKeyword(request.getKeyword()))
                 .and(ProductSpecification.hasCategoryId(request.getCategoryId()))
                 .and(ProductSpecification.hasBrandId(request.getBrandId()))
                 .and(ProductSpecification.hasSportId(request.getSportId()))
+                .and(ProductSpecification.hasGender(request.getGender()))
                 .and(ProductSpecification.hasPriceBetween(request.getMinPrice(), request.getMaxPrice()));
 
+        if (isPriceSort(request.getSort()) || Boolean.TRUE.equals(request.getPromotionOnly())) {
+            return getAllProductsWithComputedPriceSort(request, specification);
+        }
+
+        Sort sort = buildSort(request.getSort());
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
         Page<Product> productPage = productRepository.findAll(specification, pageable);
         List<Product> products = productPage.getContent();
 
@@ -116,6 +121,64 @@ public class ProductServiceImpl implements ProductService {
         );
 
         return response;
+    }
+
+    private ProductPageResponse getAllProductsWithComputedPriceSort(ProductSearchRequest request,
+                                                                    Specification<Product> specification) {
+        Sort baseSort = isPriceSort(request.getSort()) ? Sort.by(Sort.Direction.DESC, "id") : buildSort(request.getSort());
+        List<Product> products = productRepository.findAll(specification, baseSort);
+        Map<Long, List<ProductVariant>> variantsByProductId = loadVariantsByProductId(products);
+
+        Comparator<ProductResponse> comparator = Comparator.comparing(
+                this::resolveSortablePrice,
+                Comparator.nullsLast(Double::compareTo)
+        );
+
+        if ("priceDesc".equalsIgnoreCase(request.getSort())) {
+            comparator = comparator.reversed();
+        }
+
+        List<ProductResponse> allResponses = products.stream()
+                .map(product -> mapToProductResponse(
+                        product,
+                        variantsByProductId.getOrDefault(product.getId(), Collections.emptyList())
+                ))
+                .filter(response -> !Boolean.TRUE.equals(request.getPromotionOnly()) || Boolean.TRUE.equals(response.getOnPromotion()))
+                .collect(Collectors.toList());
+
+        if (isPriceSort(request.getSort())) {
+            allResponses = allResponses.stream().sorted(comparator).collect(Collectors.toList());
+        }
+
+        int totalElements = allResponses.size();
+        int fromIndex = Math.min(request.getPage() * request.getSize(), totalElements);
+        int toIndex = Math.min(fromIndex + request.getSize(), totalElements);
+        List<ProductResponse> pagedContent = allResponses.subList(fromIndex, toIndex);
+
+        ProductPageResponse response = new ProductPageResponse();
+        response.setContent(pagedContent);
+        response.setPage(request.getPage());
+        response.setSize(request.getSize());
+        response.setTotalElements(totalElements);
+        response.setTotalPages((int) Math.ceil((double) totalElements / request.getSize()));
+        response.setLast(toIndex >= totalElements);
+        return response;
+    }
+
+    private Double resolveSortablePrice(ProductResponse productResponse) {
+        if (productResponse == null) {
+            return null;
+        }
+
+        if (productResponse.getSaleMinPrice() != null) {
+            return productResponse.getSaleMinPrice();
+        }
+
+        return productResponse.getMinPrice();
+    }
+
+    private boolean isPriceSort(String sortValue) {
+        return "priceAsc".equalsIgnoreCase(sortValue) || "priceDesc".equalsIgnoreCase(sortValue);
     }
 
     private Map<Long, List<ProductVariant>> loadVariantsByProductId(List<Product> products) {
@@ -180,6 +243,14 @@ public class ProductServiceImpl implements ProductService {
                 .max(Integer::compareTo)
                 .orElse(0);
 
+        int colorCount = (int) variants.stream()
+                .map(ProductVariant::getColor)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(color -> !color.isBlank())
+                .distinct()
+                .count();
+
         Double originalMinPrice = originalPrices.stream().min(Double::compareTo).orElse(null);
         Double originalMaxPrice = originalPrices.stream().max(Double::compareTo).orElse(null);
         Double saleMinPrice = salePrices.stream().min(Double::compareTo).orElse(null);
@@ -188,6 +259,7 @@ public class ProductServiceImpl implements ProductService {
         response.setMinPrice(saleMinPrice);
         response.setMaxPrice(saleMaxPrice);
         response.setInStock(inStock);
+        response.setColorCount(colorCount);
 
         response.setOriginalMinPrice(originalMinPrice);
         response.setOriginalMaxPrice(originalMaxPrice);
@@ -238,8 +310,6 @@ public class ProductServiceImpl implements ProductService {
         }
 
         return switch (sortValue) {
-            case "nameAsc" -> Sort.by(Sort.Direction.ASC, "name");
-            case "nameDesc" -> Sort.by(Sort.Direction.DESC, "name");
             case "newest" -> Sort.by(Sort.Direction.DESC, "id");
             case "oldest" -> Sort.by(Sort.Direction.ASC, "id");
             default -> Sort.by(Sort.Direction.DESC, "id");

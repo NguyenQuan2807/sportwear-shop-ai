@@ -4,7 +4,9 @@ import { getProductsApi } from "../../services/productService";
 import { getCategoriesApi } from "../../services/categoryService";
 import { getBrandsApi } from "../../services/brandService";
 import { getSportsApi } from "../../services/sportService";
-import { DEFAULT_FILTERS, normalizeText } from "./constants";
+import { DEFAULT_FILTERS, GENDER_OPTIONS, normalizeText } from "./constants";
+
+const genderLookup = Object.fromEntries(GENDER_OPTIONS.map((item) => [item.value, item.label]));
 
 export const useProductCatalog = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,10 +31,11 @@ export const useProductCatalog = () => {
 
   const filters = useMemo(
     () => ({
-      keyword: searchParams.get("keyword") || "",
       categoryId: searchParams.get("categoryId") || "",
       brandId: searchParams.get("brandId") || "",
       sportId: searchParams.get("sportId") || "",
+      gender: searchParams.get("gender") || "",
+      promotionOnly: searchParams.get("promotionOnly") || "",
       minPrice: searchParams.get("minPrice") || "",
       maxPrice: searchParams.get("maxPrice") || "",
       sort: searchParams.get("sort") || "newest",
@@ -55,10 +58,11 @@ export const useProductCatalog = () => {
       sort: filters.sort,
     };
 
-    if (filters.keyword.trim()) params.keyword = filters.keyword.trim();
     if (filters.categoryId) params.categoryId = filters.categoryId;
     if (filters.brandId) params.brandId = filters.brandId;
     if (filters.sportId) params.sportId = filters.sportId;
+    if (filters.gender) params.gender = filters.gender;
+    if (filters.promotionOnly) params.promotionOnly = filters.promotionOnly;
     if (filters.minPrice) params.minPrice = filters.minPrice;
     if (filters.maxPrice) params.maxPrice = filters.maxPrice;
 
@@ -73,10 +77,11 @@ export const useProductCatalog = () => {
 
     const params = {};
 
-    if (merged.keyword) params.keyword = merged.keyword;
     if (merged.categoryId) params.categoryId = merged.categoryId;
     if (merged.brandId) params.brandId = merged.brandId;
     if (merged.sportId) params.sportId = merged.sportId;
+    if (merged.gender) params.gender = merged.gender;
+    if (merged.promotionOnly) params.promotionOnly = merged.promotionOnly;
     if (merged.minPrice) params.minPrice = merged.minPrice;
     if (merged.maxPrice) params.maxPrice = merged.maxPrice;
     if (merged.sort && merged.sort !== "newest") params.sort = merged.sort;
@@ -90,7 +95,6 @@ export const useProductCatalog = () => {
     const fetchFilterData = async () => {
       try {
         setFilterLoading(true);
-
         const [categoriesRes, brandsRes, sportsRes] = await Promise.all([
           getCategoriesApi(),
           getBrandsApi(),
@@ -190,34 +194,19 @@ export const useProductCatalog = () => {
     }
   }, [filterLoading, categories, brands, sports, searchParams, setSearchParams]);
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormValues((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
-    updateSearchParams({
+  const applyFilters = (nextValues, options = {}) => {
+    const merged = {
       ...formValues,
-      page: 0,
-    });
-    setMobileFilterOpen(false);
-  };
-
-  const handleSelectFilterChange = (event) => {
-    const { name, value } = event.target;
-
-    const nextValues = {
-      ...formValues,
-      [name]: value,
-      page: 0,
+      ...nextValues,
+      page: nextValues.page ?? 0,
     };
 
-    setFormValues(nextValues);
-    updateSearchParams(nextValues);
+    setFormValues(merged);
+    updateSearchParams(merged);
+
+    if (options.closeMobile) {
+      setMobileFilterOpen(false);
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -237,82 +226,40 @@ export const useProductCatalog = () => {
   };
 
   const activeFilterChips = useMemo(() => {
-    const category = categories.find(
-      (item) => String(item.id) === String(filters.categoryId)
-    );
-    const brand = brands.find(
-      (item) => String(item.id) === String(filters.brandId)
-    );
-    const sport = sports.find(
-      (item) => String(item.id) === String(filters.sportId)
-    );
+    const category = categories.find((item) => String(item.id) === String(filters.categoryId));
+    const brand = brands.find((item) => String(item.id) === String(filters.brandId));
+    const sport = sports.find((item) => String(item.id) === String(filters.sportId));
 
     const chips = [];
 
-    if (filters.keyword) {
-      chips.push({
-        key: "keyword",
-        label: `Từ khóa: ${filters.keyword}`,
-      });
-    }
-
-    if (category) {
-      chips.push({
-        key: "categoryId",
-        label: `Danh mục: ${category.name}`,
-      });
-    }
-
-    if (brand) {
-      chips.push({
-        key: "brandId",
-        label: `Thương hiệu: ${brand.name}`,
-      });
-    }
-
-    if (sport) {
-      chips.push({
-        key: "sportId",
-        label: `Môn thể thao: ${sport.name}`,
-      });
-    }
-
+    if (category) chips.push({ key: "categoryId", label: `Danh mục: ${category.name}` });
+    if (brand) chips.push({ key: "brandId", label: `Hãng: ${brand.name}` });
+    if (sport) chips.push({ key: "sportId", label: `Môn thể thao: ${sport.name}` });
+    if (filters.gender) chips.push({ key: "gender", label: `Giới tính: ${genderLookup[filters.gender]}` });
+    if (filters.promotionOnly) chips.push({ key: "promotionOnly", label: "Đang khuyến mãi" });
     if (filters.minPrice) {
-      chips.push({
-        key: "minPrice",
-        label: `Giá từ: ${Number(filters.minPrice).toLocaleString("vi-VN")}đ`,
-      });
+      chips.push({ key: "minPrice", label: `Từ ${Number(filters.minPrice).toLocaleString("vi-VN")}đ` });
     }
-
     if (filters.maxPrice) {
-      chips.push({
-        key: "maxPrice",
-        label: `Đến: ${Number(filters.maxPrice).toLocaleString("vi-VN")}đ`,
-      });
+      chips.push({ key: "maxPrice", label: `Đến ${Number(filters.maxPrice).toLocaleString("vi-VN")}đ` });
     }
 
     return chips;
   }, [filters, categories, brands, sports]);
 
   const handleRemoveChip = (key) => {
-    updateSearchParams({
-      [key]: "",
-      page: 0,
-    });
+    updateSearchParams({ [key]: "", page: 0 });
   };
 
   const selectedSortLabel = useMemo(() => {
-    const fallback = "Mới nhất";
     const lookup = {
       newest: "Mới nhất",
       oldest: "Cũ nhất",
-      nameAsc: "Tên A-Z",
-      nameDesc: "Tên Z-A",
+      priceAsc: "Giá thấp đến cao",
+      priceDesc: "Giá cao đến thấp",
     };
-    return lookup[filters.sort] || fallback;
+    return lookup[filters.sort] || "Mới nhất";
   }, [filters.sort]);
-
-  const hasPromotion = products.some((product) => product.onPromotion);
 
   return {
     filters,
@@ -328,11 +275,8 @@ export const useProductCatalog = () => {
     mobileFilterOpen,
     activeFilterChips,
     selectedSortLabel,
-    hasPromotion,
     setMobileFilterOpen,
-    handleInputChange,
-    handleSearchSubmit,
-    handleSelectFilterChange,
+    applyFilters,
     handlePageChange,
     handleResetFilters,
     handleRemoveChip,

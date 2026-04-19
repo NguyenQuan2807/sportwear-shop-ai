@@ -191,6 +191,10 @@ const Header = () => {
                   <Link to={accountSettingsPath} className="header-dropdown-link">
                     Account settings
                   </Link>
+                  <Link to={adminPath} className="header-dropdown-link"
+                  >
+                    Quản lý
+                  </Link>
                   <button
                     type="button"
                     onClick={logout}

@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.controller;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductDetailResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductPageResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductSearchRequest;
@@ -22,6 +23,8 @@ public class ProductController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long brandId,
             @RequestParam(required = false) Long sportId,
+            @RequestParam(required = false) Gender gender,
+            @RequestParam(required = false, defaultValue = "false") Boolean promotionOnly,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "newest") String sort,
@@ -33,6 +36,8 @@ public class ProductController {
         request.setCategoryId(categoryId);
         request.setBrandId(brandId);
         request.setSportId(sportId);
+        request.setGender(gender);
+        request.setPromotionOnly(promotionOnly);
         request.setMinPrice(minPrice);
         request.setMaxPrice(maxPrice);
         request.setSort(sort);

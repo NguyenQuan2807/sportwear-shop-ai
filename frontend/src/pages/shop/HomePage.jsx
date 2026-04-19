@@ -542,7 +542,7 @@ function HomePage() {
         <div className={sectionInnerClass}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-3xl font-black text-black sm:text-4xl lg:text-4xl">
+              <h2 className="text-3xl text-black sm:text-2xl lg:text-2xl">
                 Mua sắm theo môn thể thao
               </h2>
             </div>
@@ -591,7 +591,7 @@ function HomePage() {
                   />
                 </div>
                 <div className="pt-4">
-                  <p className="text-2xl font-black uppercase tracking-[0.08em] text-black sm:text-3xl">
+                  <p className="text-2xl uppercase tracking-[0.08em] sm:text-2xl">
                     {sport.name}
                   </p>
                 </div>
