@@ -14,6 +14,7 @@ import WishlistPage from "./pages/shop/WishlistPage";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 import DashboardPage from "./pages/admin/DashboardPage";
 import ManageProductsPage from "./pages/admin/ManageProductsPage";
@@ -69,6 +70,7 @@ function App() {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       <Route
         path="/admin"

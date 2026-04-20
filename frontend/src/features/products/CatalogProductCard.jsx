@@ -45,7 +45,7 @@ const CatalogProductCard = ({ product }) => {
             <img
               src={imageSrc}
               alt={product?.name}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+              className="h-full w-full object-cover transition duration-500 "
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm text-black/30">

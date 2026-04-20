@@ -207,6 +207,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
+        List<OrderItem> orderItems = orderItemRepository.findByOrder(order);
+        List<OrderItemResponse> itemResponses = mapOrderItems(orderItems);
+
         OrderResponse response = new OrderResponse();
         response.setId(order.getId());
         response.setTotalAmount(order.getTotalAmount());
@@ -216,13 +219,31 @@ public class OrderServiceImpl implements OrderService {
         response.setReceiverPhone(order.getReceiverPhone());
         response.setShippingAddress(order.getShippingAddress());
         response.setCreatedAt(order.getCreatedAt().toString());
+        response.setItems(itemResponses);
         return response;
     }
 
     private OrderDetailResponse mapToOrderDetailResponse(Order order) {
         List<OrderItem> orderItems = orderItemRepository.findByOrder(order);
+        List<OrderItemResponse> itemResponses = mapOrderItems(orderItems);
 
-        List<OrderItemResponse> itemResponses = orderItems.stream().map(item -> {
+        OrderDetailResponse response = new OrderDetailResponse();
+        response.setId(order.getId());
+        response.setTotalAmount(order.getTotalAmount());
+        response.setStatus(order.getStatus().name());
+        response.setPaymentMethod(order.getPaymentMethod().name());
+        response.setReceiverName(order.getReceiverName());
+        response.setReceiverPhone(order.getReceiverPhone());
+        response.setShippingAddress(order.getShippingAddress());
+        response.setNote(order.getNote());
+        response.setCreatedAt(order.getCreatedAt().toString());
+        response.setItems(itemResponses);
+
+        return response;
+    }
+
+    private List<OrderItemResponse> mapOrderItems(List<OrderItem> orderItems) {
+        return orderItems.stream().map(item -> {
             ProductVariant variant = item.getProductVariant();
 
             OrderItemResponse response = new OrderItemResponse();
@@ -242,19 +263,5 @@ public class OrderServiceImpl implements OrderService {
             response.setPromotionName(item.getPromotionName());
             return response;
         }).collect(Collectors.toList());
-
-        OrderDetailResponse response = new OrderDetailResponse();
-        response.setId(order.getId());
-        response.setTotalAmount(order.getTotalAmount());
-        response.setStatus(order.getStatus().name());
-        response.setPaymentMethod(order.getPaymentMethod().name());
-        response.setReceiverName(order.getReceiverName());
-        response.setReceiverPhone(order.getReceiverPhone());
-        response.setShippingAddress(order.getShippingAddress());
-        response.setNote(order.getNote());
-        response.setCreatedAt(order.getCreatedAt().toString());
-        response.setItems(itemResponses);
-
-        return response;
     }
 }

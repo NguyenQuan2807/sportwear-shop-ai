@@ -61,7 +61,7 @@ const ProductImageGallery = ({ images = [], selectedImage, onSelectImage, badgeL
         })}
       </div>
 
-      <div className="order-1 relative overflow-hidden rounded-2xl bg-[#efefef] lg:order-2">
+      <div className="order-1 relative overflow-hidden bg-[#efefef] lg:order-2">
         {badgeLabel ? (
           <div className="absolute left-6 top-6 z-10 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-black shadow-sm">
             ★ {badgeLabel}

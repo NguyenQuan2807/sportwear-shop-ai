@@ -3,6 +3,8 @@ package com.nguyenhuuquan.sportwearshop.dto.order;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class OrderResponse {
@@ -14,4 +16,5 @@ public class OrderResponse {
     private String receiverPhone;
     private String shippingAddress;
     private String createdAt;
+    private List<OrderItemResponse> items;
 }

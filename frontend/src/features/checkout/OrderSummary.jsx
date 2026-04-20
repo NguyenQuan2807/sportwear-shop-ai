@@ -26,7 +26,7 @@ const OrderSummary = ({
 
   return (
     <aside className="xl:sticky xl:top-24 xl:self-start">
-      <div className="space-y-6 rounded-[28px] bg-white p-7 shadow-sm ring-1 ring-black/5">
+      <div className="space-y-6 bg-white p-7  ring-1 ring-black/5">
         <div>
           <h2 className="text-[32px] font-semibold tracking-tight text-black">Tóm tắt đơn hàng</h2>
 

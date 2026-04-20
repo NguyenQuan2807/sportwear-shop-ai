@@ -30,11 +30,11 @@ const RelatedProductCard = ({ product }) => {
   return (
     <Link to={`/products/${product.id}`} className="group block">
       <article className="space-y-4">
-        <div className="aspect-square overflow-hidden rounded-2xl bg-[#efefef]">
+        <div className="aspect-square overflow-hidden bg-[#efefef]">
           <img
             src={resolveImageUrl(product?.thumbnailUrl)}
             alt={product?.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+            className="h-full w-full object-cover transition duration-500 "
           />
         </div>
 
@@ -102,9 +102,6 @@ const RelatedProductsSection = ({ productId, categoryId, sportId }) => {
       <div className="space-y-8">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-black/45">
-              More to explore
-            </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight text-black">
               Sản phẩm tương tự
             </h2>

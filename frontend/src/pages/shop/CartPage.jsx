@@ -184,7 +184,7 @@ const CartPage = () => {
         </section>
 
         <aside className="xl:sticky xl:top-24 xl:self-start">
-          <div className="rounded-[28px] bg-white p-7 shadow-sm ring-1 ring-black/5">
+          <div className=" bg-white p-7 ring-1 ring-black/5">
             <h2 className="text-4xl font-semibold tracking-tight text-black">Sơ lược</h2>
 
             <div className="mt-8 space-y-5 border-b border-black/10 pb-6 text-[17px]">
