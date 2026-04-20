@@ -1,15 +1,19 @@
 import axiosClient from "../api/axiosClient";
 
+export const checkEmailApi = (email) => {
+  return axiosClient.get("/api/auth/check-email", { params: { email } });
+};
+
+export const requestRegisterCodeApi = (data) => {
+  return axiosClient.post("/api/auth/register/request-code", data);
+};
+
+export const completeRegisterApi = (data) => {
+  return axiosClient.post("/api/auth/register/complete", data);
+};
+
 export const loginApi = (data) => {
   return axiosClient.post("/api/auth/login", data);
-};
-
-export const registerApi = (data) => {
-  return axiosClient.post("/api/auth/register", data);
-};
-
-export const verifyRegisterCodeApi = (data) => {
-  return axiosClient.post("/api/auth/register/verify", data);
 };
 
 export const forgotPasswordApi = (data) => {

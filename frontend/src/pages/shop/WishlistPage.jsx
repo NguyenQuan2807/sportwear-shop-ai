@@ -17,17 +17,9 @@ const WishlistPage = () => {
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 xl:py-10">
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-black">Sản phẩm yêu thích</h1>
-          {wishlistCount > 0 ? (
-            <p className="mt-2 text-sm text-black/55">{wishlistCount} sản phẩm đã lưu</p>
-          ) : null}
-        </div>
-      </div>
 
       {wishlistItems.length === 0 ? (
-        <section className="rounded-[32px] bg-white px-6 py-16 text-center shadow-sm ring-1 ring-black/5">
+        <section className=" bg-white px-6 py-16 text-center shadow-sm ring-1 ring-black/5">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-black/40">
             <EmptyHeartIcon />
           </div>

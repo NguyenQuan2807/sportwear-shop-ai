@@ -16,14 +16,19 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/register")
-    public MessageResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    @GetMapping("/check-email")
+    public EmailLookupResponse checkEmail(@RequestParam String email) {
+        return authService.checkEmail(email);
     }
 
-    @PostMapping("/register/verify")
-    public AuthResponse verifyRegistrationCode(@Valid @RequestBody VerifyEmailCodeRequest request) {
-        return authService.verifyRegistrationCode(request);
+    @PostMapping("/register/request-code")
+    public MessageResponse requestRegisterCode(@Valid @RequestBody RegisterCodeRequest request) {
+        return authService.requestRegisterCode(request);
+    }
+
+    @PostMapping("/register/complete")
+    public AuthResponse completeRegister(@Valid @RequestBody CompleteRegisterRequest request) {
+        return authService.completeRegister(request);
     }
 
     @PostMapping("/login")
@@ -48,7 +53,6 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserResponse getCurrentUser(Authentication authentication) {
-        String email = authentication.getName();
-        return authService.getCurrentUser(email);
+        return authService.getCurrentUser(authentication.getName());
     }
 }

@@ -5,8 +5,10 @@ import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
 import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.common.exception.UnauthorizedException;
 import com.nguyenhuuquan.sportwearshop.dto.auth.*;
+import com.nguyenhuuquan.sportwearshop.entity.PendingRegistration;
 import com.nguyenhuuquan.sportwearshop.entity.Role;
 import com.nguyenhuuquan.sportwearshop.entity.User;
+import com.nguyenhuuquan.sportwearshop.repository.PendingRegistrationRepository;
 import com.nguyenhuuquan.sportwearshop.repository.RoleRepository;
 import com.nguyenhuuquan.sportwearshop.repository.UserRepository;
 import com.nguyenhuuquan.sportwearshop.security.JwtService;
@@ -27,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final PendingRegistrationRepository pendingRegistrationRepository;
 
     @Value("${app.auth.verification-code-expiration-minutes:10}")
     private long verificationCodeExpirationMinutes;
@@ -38,71 +41,91 @@ public class AuthServiceImpl implements AuthService {
                            RoleRepository roleRepository,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
-                           EmailService emailService) {
+                           EmailService emailService,
+                           PendingRegistrationRepository pendingRegistrationRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.emailService = emailService;
+        this.pendingRegistrationRepository = pendingRegistrationRepository;
     }
 
     @Override
-    public MessageResponse register(RegisterRequest request) {
-        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+    public EmailLookupResponse checkEmail(String email) {
+        User user = userRepository.findByEmail(email).orElse(null);
 
-        if (user != null && Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new BadRequestException("Email đã tồn tại");
-        }
-
-        Role userRole = roleRepository.findByName(RoleName.USER)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy role USER"));
+        EmailLookupResponse response = new EmailLookupResponse();
+        response.setEmail(email);
 
         if (user == null) {
-            user = new User();
+            response.setExists(false);
+            response.setVerified(false);
+            response.setAction("REGISTER");
+            return response;
         }
 
-        String verificationCode = generateSixDigitCode();
+        boolean verified = !Boolean.FALSE.equals(user.getEmailVerified());
+        response.setExists(true);
+        response.setVerified(verified);
+        response.setAction(verified ? "LOGIN" : "REGISTER");
+        return response;
+    }
 
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPhone(request.getPhone());
-        user.setAddress(request.getAddress());
-        user.setRole(userRole);
-        user.setEmailVerified(false);
-        user.setEmailVerificationCode(verificationCode);
-        user.setEmailVerificationExpiresAt(LocalDateTime.now().plusMinutes(verificationCodeExpirationMinutes));
-        user.setResetPasswordCode(null);
-        user.setResetPasswordExpiresAt(null);
+    @Override
+    public MessageResponse requestRegisterCode(RegisterCodeRequest request) {
+        User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (existingUser != null && !Boolean.FALSE.equals(existingUser.getEmailVerified())) {
+            throw new BadRequestException("Email này đã có tài khoản. Vui lòng đăng nhập.");
+        }
 
-        userRepository.save(user);
+        String code = generateNumericCode(8);
+        PendingRegistration pending = pendingRegistrationRepository.findByEmail(request.getEmail()).orElse(new PendingRegistration());
+        pending.setEmail(request.getEmail());
+        pending.setVerificationCode(code);
+        pending.setExpiresAt(LocalDateTime.now().plusMinutes(verificationCodeExpirationMinutes));
+        pendingRegistrationRepository.save(pending);
 
         emailService.sendEmail(
-                user.getEmail(),
+                request.getEmail(),
                 "Mã xác thực đăng ký Sportwear Shop AI",
-                buildRegisterVerificationEmail(user.getFullName(), verificationCode)
+                "Mã xác thực đăng ký của bạn là: " + code + "\nMã này sẽ hết hạn sau " + verificationCodeExpirationMinutes + " phút."
         );
 
         return new MessageResponse("Mã xác thực đã được gửi tới email của bạn");
     }
 
     @Override
-    public AuthResponse verifyRegistrationCode(VerifyEmailCodeRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("Email không tồn tại"));
+    public AuthResponse completeRegister(CompleteRegisterRequest request) {
+        PendingRegistration pending = pendingRegistrationRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy yêu cầu đăng ký cho email này"));
 
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            return buildAuthResponse(user, "Email đã được xác thực trước đó");
+        validateCode(pending.getVerificationCode(), pending.getExpiresAt(), request.getCode(), "Mã xác thực không hợp lệ hoặc đã hết hạn");
+
+        Role userRole = roleRepository.findByName(RoleName.USER)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy role USER"));
+
+        User user = userRepository.findByEmail(request.getEmail()).orElse(new User());
+        if (user.getId() != null && !Boolean.FALSE.equals(user.getEmailVerified())) {
+            throw new BadRequestException("Email đã tồn tại");
         }
 
-        validateCode(user.getEmailVerificationCode(), user.getEmailVerificationExpiresAt(), request.getCode(), "Mã xác thực không hợp lệ hoặc đã hết hạn");
-
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPhone(user.getPhone());
+        user.setAddress(user.getAddress());
+        user.setRole(userRole);
         user.setEmailVerified(true);
         user.setEmailVerificationCode(null);
         user.setEmailVerificationExpiresAt(null);
-        User savedUser = userRepository.save(user);
+        user.setResetPasswordCode(null);
+        user.setResetPasswordExpiresAt(null);
 
-        return buildAuthResponse(savedUser, "Xác thực email thành công");
+        User savedUser = userRepository.save(user);
+        pendingRegistrationRepository.deleteByEmail(request.getEmail());
+
+        return buildAuthResponse(savedUser, "Đăng ký thành công");
     }
 
     @Override
@@ -116,7 +139,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (Boolean.FALSE.equals(user.getEmailVerified())) {
-            throw new UnauthorizedException("Email chưa được xác thực. Vui lòng kiểm tra mã xác thực trong email.");
+            throw new UnauthorizedException("Email chưa được xác thực.");
         }
 
         return buildAuthResponse(user, "Đăng nhập thành công");
@@ -127,7 +150,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 
         if (user != null) {
-            String resetCode = generateSixDigitCode();
+            String resetCode = generateNumericCode(8);
             user.setResetPasswordCode(resetCode);
             user.setResetPasswordExpiresAt(LocalDateTime.now().plusMinutes(resetPasswordCodeExpirationMinutes));
             userRepository.save(user);
@@ -135,7 +158,7 @@ public class AuthServiceImpl implements AuthService {
             emailService.sendEmail(
                     user.getEmail(),
                     "Mã đặt lại mật khẩu Sportwear Shop AI",
-                    buildResetPasswordEmail(user.getFullName(), resetCode)
+                    "Mã đặt lại mật khẩu của bạn là: " + resetCode + "\nMã này sẽ hết hạn sau " + resetPasswordCodeExpirationMinutes + " phút."
             );
         }
 
@@ -191,22 +214,13 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private String generateSixDigitCode() {
-        return String.format("%06d", new Random().nextInt(1_000_000));
-    }
-
-    private String buildRegisterVerificationEmail(String fullName, String code) {
-        return "Xin chào " + (fullName != null ? fullName : "bạn") + ",\n\n"
-                + "Mã xác thực đăng ký của bạn là: " + code + "\n"
-                + "Mã này sẽ hết hạn sau " + verificationCodeExpirationMinutes + " phút.\n\n"
-                + "Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.";
-    }
-
-    private String buildResetPasswordEmail(String fullName, String code) {
-        return "Xin chào " + (fullName != null ? fullName : "bạn") + ",\n\n"
-                + "Mã đặt lại mật khẩu của bạn là: " + code + "\n"
-                + "Mã này sẽ hết hạn sau " + resetPasswordCodeExpirationMinutes + " phút.\n\n"
-                + "Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.";
+    private String generateNumericCode(int length) {
+        Random random = new Random();
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            builder.append(random.nextInt(10));
+        }
+        return builder.toString();
     }
 
     private AuthResponse buildAuthResponse(User user, String message) {
@@ -221,7 +235,6 @@ public class AuthServiceImpl implements AuthService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtService.getAccessTokenExpiration());
         response.setUser(mapToUserResponse(user));
-
         return response;
     }
 

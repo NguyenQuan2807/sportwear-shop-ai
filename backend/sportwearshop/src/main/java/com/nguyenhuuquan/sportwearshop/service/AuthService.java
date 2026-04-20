@@ -3,8 +3,9 @@ package com.nguyenhuuquan.sportwearshop.service;
 import com.nguyenhuuquan.sportwearshop.dto.auth.*;
 
 public interface AuthService {
-    MessageResponse register(RegisterRequest request);
-    AuthResponse verifyRegistrationCode(VerifyEmailCodeRequest request);
+    EmailLookupResponse checkEmail(String email);
+    MessageResponse requestRegisterCode(RegisterCodeRequest request);
+    AuthResponse completeRegister(CompleteRegisterRequest request);
     AuthResponse login(LoginRequest request);
     MessageResponse forgotPassword(ForgotPasswordRequest request);
     MessageResponse resetPassword(ResetPasswordRequest request);

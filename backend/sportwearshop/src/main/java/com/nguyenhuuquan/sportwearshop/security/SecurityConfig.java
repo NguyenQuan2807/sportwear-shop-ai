@@ -32,22 +32,23 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/api/auth/register/verify",
-                                "/api/auth/forgot-password",
-                                "/api/auth/reset-password",
-                                "/api/auth/refresh"
-                        ).permitAll()
-
                         .requestMatchers(HttpMethod.GET,
+                                "/api/auth/check-email",
                                 "/api/products/**",
                                 "/api/sports/**",
                                 "/api/categories/**",
                                 "/api/brands/**",
                                 "/api/promotions/**",
                                 "/uploads/**"
+                        ).permitAll()
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/login",
+                                "/api/auth/register/request-code",
+                                "/api/auth/register/complete",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh"
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

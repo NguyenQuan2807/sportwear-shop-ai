@@ -106,7 +106,7 @@ const CartPage = () => {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="rounded-[28px] bg-white px-6 py-16 text-center shadow-sm">
+        <div className=" bg-white px-6 py-16 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-black/50">
             <BagIcon className="h-8 w-8" />
           </div>
