@@ -1,21 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUserApi } from "../../services/authService";
 import { getCartApi } from "../../services/cartService";
 import { createOrderApi } from "../../services/orderService";
+import { createMyAddressApi, getMyAddressesApi } from "../../services/profileService";
 
 const DEFAULT_FORM = {
   email: "",
   firstName: "",
   lastName: "",
-  shippingAddress: "",
+  addressLine: "",
+  provinceCode: "",
+  provinceName: "",
+  districtCode: "",
+  districtName: "",
+  wardCode: "",
+  wardName: "",
   receiverPhone: "",
   note: "",
   paymentMethod: "COD",
   billingSameAsShipping: true,
+  saveNewAddress: false,
 };
 
 const PHONE_REGEX = /^(0|\+84)[0-9]{9,10}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const splitFullName = (fullName = "") => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: "", lastName: "" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+  return {
+    firstName: parts[parts.length - 1],
+    lastName: parts.slice(0, -1).join(" "),
+  };
+};
+
+const buildShippingAddress = (formData) =>
+  [formData.addressLine, formData.wardName, formData.districtName, formData.provinceName]
+    .filter(Boolean)
+    .join(", ");
 
 export const useCheckout = () => {
   const navigate = useNavigate();
@@ -26,17 +54,61 @@ export const useCheckout = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
-  const fetchCart = async () => {
+  const fillAddressIntoForm = (address, keepSaveFlag = false) => {
+    const { firstName, lastName } = splitFullName(address.fullName || "");
+    setSelectedAddressId(address.id || null);
+    setFormData((prev) => ({
+      ...prev,
+      firstName: firstName || prev.firstName,
+      lastName: lastName || prev.lastName,
+      addressLine: address.addressLine || prev.addressLine,
+      provinceCode: address.provinceCode || "",
+      provinceName: address.provinceName || "",
+      districtCode: address.districtCode || "",
+      districtName: address.districtName || "",
+      wardCode: address.wardCode || "",
+      wardName: address.wardName || "",
+      receiverPhone: address.phoneNumber || prev.receiverPhone,
+      saveNewAddress: keepSaveFlag ? prev.saveNewAddress : false,
+    }));
+  };
+
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
 
-      const response = await getCartApi();
-      setCart(response.data);
+      const [cartResponse, currentUserResponse, addressesResponse] = await Promise.all([
+        getCartApi(),
+        getCurrentUserApi(),
+        getMyAddressesApi(),
+      ]);
+
+      setCart(cartResponse.data);
+
+      const currentUser = currentUserResponse.data || {};
+      const savedAddresses = Array.isArray(addressesResponse.data) ? addressesResponse.data : [];
+      setAddresses(savedAddresses);
+
+      const { firstName, lastName } = splitFullName(currentUser.fullName || "");
+      setFormData((prev) => ({
+        ...prev,
+        email: currentUser.email || prev.email,
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        receiverPhone: currentUser.phone || prev.receiverPhone,
+      }));
+
+      const defaultAddress = savedAddresses.find((item) => item.isDefault) || null;
+      if (defaultAddress) {
+        fillAddressIntoForm(defaultAddress);
+      }
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể tải giỏ hàng";
+      const backendMessage = error?.response?.data?.message || "Không thể tải dữ liệu thanh toán";
       setErrorMessage(backendMessage);
     } finally {
       setLoading(false);
@@ -44,7 +116,7 @@ export const useCheckout = () => {
   };
 
   useEffect(() => {
-    fetchCart();
+    fetchInitialData();
   }, []);
 
   const items = cart?.items || [];
@@ -64,31 +136,33 @@ export const useCheckout = () => {
     if (!EMAIL_REGEX.test(formData.email.trim())) {
       return "Email không hợp lệ";
     }
-
     if (!formData.firstName.trim()) {
       return "Vui lòng nhập tên";
     }
-
     if (!formData.lastName.trim()) {
       return "Vui lòng nhập họ";
     }
-
     if (!PHONE_REGEX.test(formData.receiverPhone.trim())) {
       return "Số điện thoại không hợp lệ";
     }
-
-    if (!formData.shippingAddress.trim()) {
-      return "Vui lòng nhập địa chỉ giao hàng";
+    if (!formData.addressLine.trim()) {
+      return "Vui lòng nhập địa chỉ cụ thể";
     }
-
+    if (!formData.provinceCode) {
+      return "Vui lòng chọn tỉnh/thành phố";
+    }
+    if (!formData.districtCode) {
+      return "Vui lòng chọn quận/huyện";
+    }
+    if (!formData.wardCode) {
+      return "Vui lòng chọn phường/xã";
+    }
     if (!cart?.items || cart.items.length === 0) {
       return "Giỏ hàng đang trống";
     }
-
     if (formData.paymentMethod !== "COD") {
       return "Momo và VNPay đã có UI chọn phương thức, nhưng backend thanh toán online chưa được tích hợp xong. Hiện tại bạn vui lòng dùng COD để tạo đơn thật.";
     }
-
     return "";
   };
 
@@ -98,13 +172,10 @@ export const useCheckout = () => {
       ...prev,
       [name]: value,
     }));
-  };
 
-  const handleToggleBilling = () => {
-    setFormData((prev) => ({
-      ...prev,
-      billingSameAsShipping: !prev.billingSameAsShipping,
-    }));
+    if (["addressLine", "receiverPhone", "firstName", "lastName"].includes(name)) {
+      setSelectedAddressId(null);
+    }
   };
 
   const handleSelectPayment = (method) => {
@@ -114,8 +185,83 @@ export const useCheckout = () => {
     }));
   };
 
-  const handleSubmitOrder = async (event) => {
+  const handleOpenAddressModal = () => setIsAddressModalOpen(true);
+  const handleCloseAddressModal = () => setIsAddressModalOpen(false);
+
+  const handleChooseAddress = (address) => {
+    fillAddressIntoForm(address);
+    setIsAddressModalOpen(false);
+  };
+
+  const handleProvinceChange = (provinceCode) => {
+    const province = addresses.length
+      ? null
+      : null;
+    setSelectedAddressId(null);
+    setFormData((prev) => ({
+      ...prev,
+      provinceCode,
+      provinceName: "",
+      districtCode: "",
+      districtName: "",
+      wardCode: "",
+      wardName: "",
+    }));
+  };
+
+  const handleDistrictChange = (districtCode) => {
+    setSelectedAddressId(null);
+    setFormData((prev) => ({
+      ...prev,
+      districtCode,
+      districtName: "",
+      wardCode: "",
+      wardName: "",
+    }));
+  };
+
+  const handleWardChange = (wardCode) => {
+    setSelectedAddressId(null);
+    setFormData((prev) => ({
+      ...prev,
+      wardCode,
+      wardName: "",
+    }));
+  };
+
+  const syncLocationNames = ({ provinces, provinceCode, districtCode, wardCode }) => {
+    const province = provinces.find((item) => item.code === provinceCode);
+    const district = province?.districts?.find((item) => item.code === districtCode);
+    const ward = district?.wards?.find((item) => item.code === wardCode);
+    return {
+      provinceName: province?.name || "",
+      districtName: district?.name || "",
+      wardName: ward?.name || "",
+    };
+  };
+
+  const handleToggleSaveAddress = () => {
+    setSelectedAddressId(null);
+    setFormData((prev) => ({
+      ...prev,
+      saveNewAddress: !prev.saveNewAddress,
+    }));
+  };
+
+  const handleSubmitOrder = async (event, locationTree) => {
     event.preventDefault();
+
+    const locationNames = syncLocationNames({
+      provinces: locationTree,
+      provinceCode: formData.provinceCode,
+      districtCode: formData.districtCode,
+      wardCode: formData.wardCode,
+    });
+
+    const normalizedForm = {
+      ...formData,
+      ...locationNames,
+    };
 
     const validationMessage = validateForm();
     if (validationMessage) {
@@ -129,21 +275,44 @@ export const useCheckout = () => {
       setSuccessMessage("");
 
       await createOrderApi({
-        shippingAddress: formData.shippingAddress,
+        shippingAddress: buildShippingAddress(normalizedForm),
         receiverName,
-        receiverPhone: formData.receiverPhone,
-        note: formData.note,
-        paymentMethod: formData.paymentMethod,
+        receiverPhone: normalizedForm.receiverPhone,
+        note: normalizedForm.note,
+        paymentMethod: normalizedForm.paymentMethod,
       });
 
-      setSuccessMessage("Đặt hàng thành công");
+      let finalSuccessMessage = "Đặt hàng thành công";
+
+      if (normalizedForm.saveNewAddress && !selectedAddressId) {
+        try {
+          const addressResponse = await createMyAddressApi({
+            fullName: receiverName,
+            phoneNumber: normalizedForm.receiverPhone,
+            addressLine: normalizedForm.addressLine,
+            provinceCode: normalizedForm.provinceCode,
+            provinceName: normalizedForm.provinceName,
+            districtCode: normalizedForm.districtCode,
+            districtName: normalizedForm.districtName,
+            wardCode: normalizedForm.wardCode,
+            wardName: normalizedForm.wardName,
+            isDefault: false,
+          });
+          setAddresses((prev) => [addressResponse.data, ...prev]);
+          finalSuccessMessage = "Đặt hàng thành công và đã lưu địa chỉ mới";
+        } catch (saveAddressError) {
+          console.error(saveAddressError);
+          finalSuccessMessage = "Đặt hàng thành công nhưng lưu địa chỉ mới thất bại";
+        }
+      }
+
+      setSuccessMessage(finalSuccessMessage);
 
       setTimeout(() => {
         navigate("/orders");
       }, 1200);
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể tạo đơn hàng";
+      const backendMessage = error?.response?.data?.message || "Không thể tạo đơn hàng";
       setErrorMessage(backendMessage);
     } finally {
       setSubmitting(false);
@@ -158,14 +327,25 @@ export const useCheckout = () => {
     errorMessage,
     successMessage,
     formData,
+    addresses,
+    selectedAddressId,
+    isAddressModalOpen,
     totalQuantity,
     subTotalAmount,
     discountAmount,
     shippingFee,
     totalAmount,
     handleChange,
-    handleToggleBilling,
     handleSelectPayment,
+    handleOpenAddressModal,
+    handleCloseAddressModal,
+    handleChooseAddress,
+    handleProvinceChange,
+    handleDistrictChange,
+    handleWardChange,
+    handleToggleSaveAddress,
     handleSubmitOrder,
+    setFormData,
+    syncLocationNames,
   };
 };

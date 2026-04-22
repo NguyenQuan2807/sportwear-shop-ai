@@ -17,6 +17,14 @@ const WishlistPage = () => {
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 xl:py-10">
+      <section>
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
+          <div>
+            <h1 className="text-[44px] font-medium tracking-tight text-black">Yêu thích</h1>
+          </div>
+        </div>
+        <div className="mt-2 mb-5 border-b border-black/10" />
+      </section>
 
       {wishlistItems.length === 0 ? (
         <section className=" bg-white px-6 py-16 text-center shadow-sm ring-1 ring-black/5">

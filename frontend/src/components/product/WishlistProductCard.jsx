@@ -145,8 +145,6 @@ const WishlistProductCard = ({ product }) => {
         >
             Thêm vào giỏ hàng
         </Link>
-
-        
       </div>
     </article>
   );

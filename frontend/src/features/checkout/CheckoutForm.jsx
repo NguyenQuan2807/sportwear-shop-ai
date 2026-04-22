@@ -1,4 +1,7 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import useVietnamLocations from "../../hooks/useVietnamLocations";
+import AddressPickerModal from "./AddressPickerModal";
 
 const InputField = ({
   label,
@@ -9,27 +12,41 @@ const InputField = ({
   required = false,
   helperText,
   type = "text",
-  rightAdornment = null,
+  readOnly = false,
 }) => (
   <div>
     {label ? <label className="mb-2 block text-sm font-medium text-black/55">{label}</label> : null}
-    <div className="relative">
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className="h-14 w-full rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black"
-      />
-      {rightAdornment ? (
-        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-          {rightAdornment}
-        </div>
-      ) : null}
-    </div>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      required={required}
+      readOnly={readOnly}
+      className="h-14 w-full rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black read-only:bg-black/[0.03]"
+    />
     {helperText ? <p className="mt-2 text-sm text-black/45">{helperText}</p> : null}
+  </div>
+);
+
+const SelectField = ({ label, value, onChange, options, placeholder, disabled = false, required = false }) => (
+  <div>
+    {label ? <label className="mb-2 block text-sm font-medium text-black/55">{label}</label> : null}
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      required={required}
+      className="h-14 w-full rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black disabled:cursor-not-allowed disabled:bg-black/[0.03]"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((item) => (
+        <option key={item.code} value={item.code}>
+          {item.name}
+        </option>
+      ))}
+    </select>
   </div>
 );
 
@@ -45,9 +62,7 @@ const PaymentOption = ({ active, icon, title, subtitle, onClick }) => (
       active ? "border-black shadow-[inset_0_0_0_1px_#000]" : "border-black/15 hover:border-black/35"
     }`}
   >
-    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/5 text-black">
-      {icon}
-    </div>
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/5 text-black">{icon}</div>
     <div className="min-w-0 flex-1">
       <div className="text-xl font-semibold text-black">{title}</div>
       <div className="mt-1 text-sm text-black/55">{subtitle}</div>
@@ -58,168 +73,207 @@ const PaymentOption = ({ active, icon, title, subtitle, onClick }) => (
 const CheckoutForm = ({
   formData,
   submitting,
+  addresses,
+  selectedAddressId,
+  isAddressModalOpen,
   onChange,
-  onToggleBilling,
   onSelectPayment,
+  onOpenAddressModal,
+  onCloseAddressModal,
+  onChooseAddress,
+  onProvinceChange,
+  onDistrictChange,
+  onWardChange,
+  onToggleSaveAddress,
   onSubmit,
 }) => {
+  const { provinces, isLoading: locationsLoading } = useVietnamLocations();
+
+  const districtOptions = useMemo(() => {
+    const province = provinces.find((item) => item.code === formData.provinceCode);
+    return province?.districts || [];
+  }, [provinces, formData.provinceCode]);
+
+  const wardOptions = useMemo(() => {
+    const district = districtOptions.find((item) => item.code === formData.districtCode);
+    return district?.wards || [];
+  }, [districtOptions, formData.districtCode]);
+
   return (
-    <form onSubmit={onSubmit} className="space-y-10">
-      <section className="border-b border-black/10 pb-10">
-        <SectionTitle>Giao hàng</SectionTitle>
+    <>
+      <form noValidate onSubmit={(event) => onSubmit(event, provinces)} className="space-y-10">
+        <section className="border-b border-black/10 pb-10">
+          <SectionTitle>Giao hàng</SectionTitle>
 
-        <div className="mt-7 space-y-6">
-          <InputField
-            label="Email *"
-            name="email"
-            value={formData.email}
-            onChange={onChange}
-            placeholder="Nhập email"
-            required
-            type="email"
-            helperText="Sau khi hoàn tất thanh toán, bạn sẽ nhận được email xác nhận."
-          />
-
-          <div>
-            <p className="mb-4 text-[28px] font-medium tracking-tight text-black">
-              Điền tên của bạn và địa chỉ nhận hàng
-            </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <InputField
-                name="firstName"
-                value={formData.firstName}
-                onChange={onChange}
-                placeholder="Tên của bạn *"
-                required
-              />
-              <InputField
-                name="lastName"
-                value={formData.lastName}
-                onChange={onChange}
-                placeholder="Họ của bạn *"
-                required
-              />
-            </div>
-          </div>
-
-          <InputField
-            name="shippingAddress"
-            value={formData.shippingAddress}
-            onChange={onChange}
-            placeholder="Địa chỉ nhận hàng *"
-            required
-          />
-
-          <button
-            type="button"
-            className="text-[17px] font-medium text-black underline underline-offset-4"
-          >
-            Enter address manually
-          </button>
-
-          <InputField
-            name="receiverPhone"
-            value={formData.receiverPhone}
-            onChange={onChange}
-            placeholder="Số điện thoại *"
-            required
-            helperText="Người vận chuyển có thể liên hệ với bạn để xác nhận việc giao hàng."
-          />
-
-          {/* <label className="inline-flex items-center gap-3 text-[17px] text-black">
-            <input
-              type="checkbox"
-              checked={Boolean(formData.billingSameAsShipping)}
-              onChange={onToggleBilling}
-              className="h-5 w-5 rounded border-black/20 text-black focus:ring-black"
+          <div className="mt-7 space-y-6">
+            <InputField
+              label="Email *"
+              name="email"
+              value={formData.email}
+              onChange={onChange}
+              placeholder="Nhập email"
+              required
+              type="email"
+              readOnly
+              helperText="Email được tự động lấy từ tài khoản đang đăng nhập."
             />
-            <span>Billing matches shipping address</span>
-          </label> */}
-        </div>
-      </section>
 
-      {/* <section className="border-b border-black/10 pb-10">
-        <SectionTitle>Shipping</SectionTitle>
-
-        <div className="mt-7 space-y-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-2xl border border-black px-5 py-5 text-left"
-          >
             <div>
-              <div className="text-xl font-semibold text-black">Standard Delivery</div>
-              <div className="mt-1 text-sm text-black/55">Dự kiến giao trong 2-5 ngày làm việc.</div>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[28px] font-medium tracking-tight text-black">
+                  Thông tin người nhận và địa chỉ giao hàng
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenAddressModal}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-black/15 bg-white px-5 text-sm font-semibold text-black transition hover:border-black"
+                >
+                  Chọn địa chỉ
+                </button>
+              </div>
+
+              {selectedAddressId ? (
+                <p className="mb-4 text-sm text-black/55">
+                </p>
+              ) : null}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <InputField
+                  label="Tên *"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={onChange}
+                  placeholder="Tên của bạn"
+                  required
+                />
+                <InputField
+                  label="Họ *"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={onChange}
+                  placeholder="Họ của bạn"
+                  required
+                />
+              </div>
             </div>
-            <div className="text-lg font-semibold text-black">Đã chọn</div>
-          </button>
-        </div>
-      </section> */}
 
-      <section className="space-y-6">
-        <SectionTitle>Phương thức thanh toán</SectionTitle>
-
-        {/* <div>
-          <p className="mb-4 text-[28px] font-medium tracking-tight text-black">Have a promo code?</p>
-          <div className="flex flex-col gap-3 md:flex-row">
-            <input
-              type="text"
-              placeholder="Promo"
-              className="h-14 flex-1 rounded-xl border border-black/20 bg-white px-4 text-[17px] text-black outline-none transition focus:border-black"
+            <InputField
+              label="Địa chỉ cụ thể *"
+              name="addressLine"
+              value={formData.addressLine}
+              onChange={onChange}
+              placeholder="Ví dụ: số nhà, tên đường..."
+              required
             />
-            <button
-              type="button"
-              className="inline-flex h-14 items-center justify-center rounded-full border border-black/15 px-8 text-[17px] font-medium text-black transition hover:border-black/35"
-            >
-              Apply
-            </button>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <SelectField
+                label="Tỉnh/Thành phố *"
+                value={formData.provinceCode}
+                onChange={onProvinceChange}
+                options={provinces}
+                placeholder={locationsLoading ? "Đang tải..." : "Chọn tỉnh/thành"}
+                disabled={locationsLoading}
+                required
+              />
+              <SelectField
+                label="Quận/Huyện *"
+                value={formData.districtCode}
+                onChange={onDistrictChange}
+                options={districtOptions}
+                placeholder="Chọn quận/huyện"
+                disabled={locationsLoading || !formData.provinceCode}
+                required
+              />
+              <SelectField
+                label="Phường/Xã *"
+                value={formData.wardCode}
+                onChange={onWardChange}
+                options={wardOptions}
+                placeholder="Chọn phường/xã"
+                disabled={locationsLoading || !formData.districtCode}
+                required
+              />
+            </div>
+
+            <InputField
+              label="Số điện thoại *"
+              name="receiverPhone"
+              value={formData.receiverPhone}
+              onChange={onChange}
+              placeholder="Số điện thoại nhận hàng"
+              required
+              helperText="Người vận chuyển có thể liên hệ với bạn để xác nhận việc giao hàng."
+            />
+
+            <label className="flex items-center gap-3 rounded-2xl border border-black/10 bg-black/[0.02] px-4 py-4 text-sm text-black/75">
+              <input
+                type="checkbox"
+                checked={formData.saveNewAddress}
+                onChange={onToggleSaveAddress}
+                className="h-4 w-4 rounded border-black/20"
+              />
+              Lưu địa chỉ này vào danh sách địa chỉ giao hàng của tôi
+            </label>
           </div>
-          <p className="mt-2 text-sm text-black/45">Limit 1 promo per order.</p>
-        </div> */}
+        </section>
 
-        <div className="space-y-4">
-          <PaymentOption
-            title="Thanh toán khi nhận hàng (COD)"
-            subtitle="Thanh toán bằng tiền mặt khi đơn hàng được giao đến bạn."
-            active={formData.paymentMethod === "COD"}
-            onClick={() => onSelectPayment("COD")}
-            icon={<CashIcon />}
-          />
+        <section className="space-y-6">
+          <SectionTitle>Phương thức thanh toán</SectionTitle>
 
-          <PaymentOption
-            title="MoMo"
-            subtitle="Thanh toán qua ví điện tử MoMo."
-            active={formData.paymentMethod === "MOMO"}
-            onClick={() => onSelectPayment("MOMO")}
-            icon={<MomoIcon />}
-          />
+          <div className="space-y-4">
+            <PaymentOption
+              title="Thanh toán khi nhận hàng (COD)"
+              subtitle="Thanh toán bằng tiền mặt khi đơn hàng được giao đến bạn."
+              active={formData.paymentMethod === "COD"}
+              onClick={() => onSelectPayment("COD")}
+              icon={<CashIcon />}
+            />
 
-          <PaymentOption
-            title="VNPay"
-            subtitle="Thanh toán online qua cổng VNPay."
-            active={formData.paymentMethod === "VNPAY"}
-            onClick={() => onSelectPayment("VNPAY")}
-            icon={<VnpayIcon />}
-          />
-        </div>
+            <PaymentOption
+              title="MoMo"
+              subtitle="Thanh toán qua ví điện tử MoMo."
+              active={formData.paymentMethod === "MOMO"}
+              onClick={() => onSelectPayment("MOMO")}
+              icon={<MomoIcon />}
+            />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-full bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Đang xử lý..." : "Xác nhận đặt hàng"}
-          </button>
+            <PaymentOption
+              title="VNPay"
+              subtitle="Thanh toán online qua cổng VNPay."
+              active={formData.paymentMethod === "VNPAY"}
+              onClick={() => onSelectPayment("VNPAY")}
+              icon={<VnpayIcon />}
+            />
+          </div>
 
-          <Link
-            to="/cart"
-            className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-6 py-4 text-base font-semibold text-black transition hover:border-black"
-          >
-            Quay lại giỏ hàng
-          </Link>
-        </div>
-      </section>
-    </form>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-full bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Đang xử lý..." : "Xác nhận đặt hàng"}
+            </button>
+
+            <Link
+              to="/cart"
+              className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-6 py-4 text-base font-semibold text-black transition hover:border-black"
+            >
+              Quay lại giỏ hàng
+            </Link>
+          </div>
+        </section>
+      </form>
+
+      <AddressPickerModal
+        open={isAddressModalOpen}
+        onClose={onCloseAddressModal}
+        addresses={addresses}
+        selectedAddressId={selectedAddressId}
+        onSelect={onChooseAddress}
+      />
+    </>
   );
 };
 

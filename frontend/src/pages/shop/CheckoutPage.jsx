@@ -87,14 +87,23 @@ const CheckoutPage = () => {
     errorMessage,
     successMessage,
     formData,
+    addresses,
+    selectedAddressId,
+    isAddressModalOpen,
     totalQuantity,
     subTotalAmount,
     discountAmount,
     shippingFee,
     totalAmount,
     handleChange,
-    handleToggleBilling,
     handleSelectPayment,
+    handleOpenAddressModal,
+    handleCloseAddressModal,
+    handleChooseAddress,
+    handleProvinceChange,
+    handleDistrictChange,
+    handleWardChange,
+    handleToggleSaveAddress,
     handleSubmitOrder,
   } = useCheckout();
 
@@ -124,9 +133,18 @@ const CheckoutPage = () => {
         <CheckoutForm
           formData={formData}
           submitting={submitting}
+          addresses={addresses}
+          selectedAddressId={selectedAddressId}
+          isAddressModalOpen={isAddressModalOpen}
           onChange={handleChange}
-          onToggleBilling={handleToggleBilling}
           onSelectPayment={handleSelectPayment}
+          onOpenAddressModal={handleOpenAddressModal}
+          onCloseAddressModal={handleCloseAddressModal}
+          onChooseAddress={handleChooseAddress}
+          onProvinceChange={handleProvinceChange}
+          onDistrictChange={handleDistrictChange}
+          onWardChange={handleWardChange}
+          onToggleSaveAddress={handleToggleSaveAddress}
           onSubmit={handleSubmitOrder}
         />
 

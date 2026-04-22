@@ -33,10 +33,9 @@ const formatDateTime = (value) => {
 };
 
 const accountTabs = [
-  { label: "Profile", disabled: true },
-  { label: "Orders", to: "/orders" },
-  { label: "Favourites", to: "/wishlist" },
-  { label: "Settings", disabled: true },
+  { label: "Tài khoản", to: "/profile" },
+  { label: "Đơn hàng", to: "/orders" },
+  { label: "Yêu thích", to: "/wishlist" },
 ];
 
 const OrderItemStrip = ({ items = [] }) => {
@@ -104,13 +103,13 @@ const OrderHistoryPage = () => {
       <section>
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
           <div>
-            <h1 className="text-[44px] font-medium tracking-tight text-black">Orders</h1>
+            <h1 className="text-[44px] font-medium tracking-tight text-black">Đơn hàng</h1>
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-8 text-[16px] lg:justify-center">
             {accountTabs.map((tab) => {
               const sharedClassName =
-                tab.label === "Orders"
+                tab.label === "Đơn hàng"
                   ? "font-medium text-black"
                   : "font-medium text-black/55 transition hover:text-black";
 
@@ -160,13 +159,13 @@ const OrderHistoryPage = () => {
         <div className="py-14 text-center text-[18px] text-red-600">{errorMessage}</div>
       ) : orders.length === 0 ? (
         <div className="flex min-h-[420px] items-start justify-center pt-16 text-center">
-          <p className="text-[18px] text-black/55">You don't have any orders yet</p>
+          <p className="text-[18px] text-black/55">Bạn chưa có đơn hàng nào!</p>
         </div>
       ) : (
         <div className="py-10">
           <div className="mb-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-[15px] text-black/65">
-            <span>{orders.length} orders</span>
-            <span>Total spent: {formatCurrency(totalSpent)}</span>
+            <span>{orders.length} Đơn hàng</span>
+            <span>Tổng chi tiêu: {formatCurrency(totalSpent)}</span>
           </div>
 
           <div className="space-y-0 border-t border-black/10">
@@ -174,7 +173,7 @@ const OrderHistoryPage = () => {
               <article key={order.id} className="border-b border-black/10 py-6">
                 <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr_220px] lg:items-start">
                   <div>
-                    <p className="text-[14px] font-medium text-black">Order #{order.id}</p>
+                    <p className="text-[14px] font-medium text-black">Đơn hàng #{order.id}</p>
                     <p className="mt-1 text-[15px] text-black/55">
                       {statusLabelMap[order.status] || order.status || "Đang cập nhật"}
                     </p>
@@ -187,19 +186,19 @@ const OrderHistoryPage = () => {
 
                   <div className="space-y-1 text-[15px] text-black/65">
                     <p>
-                      <span className="text-black">Created:</span> {formatDateTime(order.createdAt)}
+                      <span className="text-black">Ngày tạo:</span> {formatDateTime(order.createdAt)}
                     </p>
                     <p>
-                      <span className="text-black">Payment:</span>{" "}
+                      <span className="text-black">Phương thức thanh toán:</span>{" "}
                       {paymentMethodLabelMap[order.paymentMethod] ||
                         order.paymentMethod ||
                         "Đang cập nhật"}
                     </p>
                     <p>
-                      <span className="text-black">Receiver:</span> {order.receiverName || "Đang cập nhật"}
+                      <span className="text-black">Người nhận:</span> {order.receiverName || "Đang cập nhật"}
                     </p>
                     <p>
-                      <span className="text-black">Items:</span> {order.items?.length || 0}
+                      <span className="text-black">Mặt hàng:</span> {order.items?.length || 0}
                     </p>
                   </div>
 
@@ -211,7 +210,7 @@ const OrderHistoryPage = () => {
                       to={`/orders/${order.id}`}
                       className="inline-flex items-center justify-center rounded-full border border-black/15 px-5 py-3 text-[15px] font-medium text-black transition hover:border-black"
                     >
-                      View order
+                      Chi tiết đơn hàng
                     </Link>
                   </div>
                 </div>

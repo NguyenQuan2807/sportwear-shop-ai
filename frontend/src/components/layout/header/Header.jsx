@@ -74,7 +74,6 @@ const Header = () => {
   const orderPath = "/orders";
   const adminPath = "/admin";
   const profilePath = "/profile";
-  const accountSettingsPath = "/account-settings";
 
   const closeMobileSearch = () => setMobileSearchOpen(false);
 
@@ -120,10 +119,11 @@ const Header = () => {
 
                 {utilityMenuOpen ? (
                   <div className="header-utility-dropdown">
-                    <Link to={profilePath} className="header-dropdown-link">Cá nhân</Link>
+                    <Link to={profilePath} className="header-dropdown-link">Tài khoản</Link>
                     <Link to={orderPath} className="header-dropdown-link">Đơn hàng</Link>
-                    <Link to={accountSettingsPath} className="header-dropdown-link">Cài đặt tài khoản</Link>
+                    {user?.roleName === "ADMIN" ? (
                     <Link to={adminPath} className="header-dropdown-link">Quản lý</Link>
+                    ) : null}
                     <button type="button" onClick={logout} className="header-dropdown-link header-dropdown-danger w-full text-left">
                       Đăng xuất
                     </button>

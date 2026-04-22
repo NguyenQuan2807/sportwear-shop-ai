@@ -27,10 +27,9 @@ const statusToneMap = {
 };
 
 const accountTabs = [
-  { label: "Profile", disabled: true },
-  { label: "Orders", to: "/orders" },
-  { label: "Favourites", to: "/wishlist" },
-  { label: "Settings", disabled: true },
+  { label: "Tài khoản", to: "/account" },
+  { label: "Đơn hàng", to: "/orders" },
+  { label: "Yêu thích", to: "/wishlist" },
 ];
 
 const formatDateTime = (value) => {
@@ -95,7 +94,7 @@ const OrderDetailPage = () => {
       <section>
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
           <div>
-            <h1 className="text-[44px] font-medium tracking-tight text-black">Orders</h1>
+            <h1 className="text-[44px] font-medium tracking-tight text-black"></h1>
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-8 text-[16px] lg:justify-center">
@@ -159,31 +158,31 @@ const OrderDetailPage = () => {
           <div className="flex flex-col gap-4 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Link to="/orders" className="text-[14px] text-black/55 transition hover:text-black">
-                ← Back to orders
+                ← Quay lại danh sách đơn hàng
               </Link>
               <h2 className="mt-3 text-[36px] font-medium tracking-tight text-black">
-                Order #{order.id}
+                Đơn hàng #{order.id}
               </h2>
-              <p className="mt-2 text-[16px] text-black/55">Created {formatDateTime(order.createdAt)}</p>
+              <p className="mt-2 text-[16px] text-black/55">Ngày tạo {formatDateTime(order.createdAt)}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-6 text-[15px]">
               <span className={`font-medium ${statusToneMap[order.status] || "text-black"}`}>
                 {statusLabelMap[order.status] || order.status || "Đang cập nhật"}
               </span>
-              <span className="text-black/55">{totalQuantity} items</span>
+              <span className="text-black/55">{totalQuantity} Mặt hàng</span>
             </div>
           </div>
 
           <div className="grid gap-12 pt-8 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div>
               <section className="border-b border-black/10 pb-10">
-                <h3 className="text-[22px] font-medium text-black">Order details</h3>
+                <h3 className="text-[22px] font-medium text-black">Chi tiết đơn hàng</h3>
                 <div className="mt-6">
-                  <DetailRow label="Recipient" value={order.receiverName} />
-                  <DetailRow label="Phone" value={order.receiverPhone} />
+                  <DetailRow label="Người nhận" value={order.receiverName} />
+                  <DetailRow label="Số điện thoại" value={order.receiverPhone} />
                   <DetailRow
-                    label="Payment"
+                    label="thanh toán"
                     value={
                       paymentMethodLabelMap[order.paymentMethod] ||
                       order.paymentMethod ||
@@ -191,7 +190,7 @@ const OrderDetailPage = () => {
                     }
                   />
                   <DetailRow
-                    label="Shipping address"
+                    label="Địa chỉ"
                     value={order.shippingAddress || "Đang cập nhật"}
                   />
                   {order.note ? <DetailRow label="Note" value={order.note} /> : null}
@@ -199,7 +198,7 @@ const OrderDetailPage = () => {
               </section>
 
               <section className="pt-10">
-                <h3 className="text-[22px] font-medium text-black">Items</h3>
+                <h3 className="text-[22px] font-medium text-black">Mặt hàng</h3>
                 <div className="mt-6 border-t border-black/10">
                   {(order.items || []).map((item, index) => (
                     <article
@@ -227,13 +226,13 @@ const OrderDetailPage = () => {
                         <div className="mt-2 space-y-1 text-[15px] text-black/55">
                           <p>Size {item.size || "N/A"}</p>
                           <p>{item.color || "Đang cập nhật màu"}</p>
-                          <p>Quantity {item.quantity || 0}</p>
-                          <p>Unit price {formatCurrency(item.price || 0)}</p>
+                          <p>Số lượng {item.quantity || 0}</p>
+                          <p>Đơn giá {formatCurrency(item.price || 0)}</p>
                         </div>
                       </div>
 
                       <div className="md:text-right">
-                        <p className="text-[14px] text-black/45">Total</p>
+                        <p className="text-[14px] text-black/45">Giá</p>
                         <p className="mt-1 text-[22px] font-medium text-black">
                           {formatCurrency(item.totalPrice || 0)}
                         </p>
@@ -246,13 +245,13 @@ const OrderDetailPage = () => {
 
             <aside>
               <div className="xl:sticky xl:top-28 p-7 ring-1 ring-black/5">
-                <h3 className="text-[22px] font-medium text-black">Summary</h3>
+                <h3 className="text-[22px] font-medium text-black">Thông tin</h3>
                 <div className="mt-6 space-y-5 border-t border-black/10 pt-5">
-                  <SummaryRow label="Order number" value={`#${order.id}`} />
-                  <SummaryRow label="Items" value={order.items?.length || 0} />
-                  <SummaryRow label="Total quantity" value={totalQuantity} />
+                  <SummaryRow label="Mã đơn hàng" value={`#${order.id}`} />
+                  <SummaryRow label="Mặt hàng" value={order.items?.length || 0} />
+                  <SummaryRow label="Tổng số lượng" value={totalQuantity} />
                   <SummaryRow
-                    label="Payment"
+                    label="Thanh toán"
                     value={
                       paymentMethodLabelMap[order.paymentMethod] ||
                       order.paymentMethod ||
@@ -261,7 +260,7 @@ const OrderDetailPage = () => {
                   />
                   <div className="border-t border-black/10 pt-5">
                     <SummaryRow
-                      label="Total"
+                      label="Tổng giá"
                       value={formatCurrency(order.totalAmount || 0)}
                       strong
                     />

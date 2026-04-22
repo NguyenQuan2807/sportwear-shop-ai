@@ -11,6 +11,7 @@ import CheckoutPage from "./pages/shop/CheckoutPage";
 import OrderHistoryPage from "./pages/shop/OrderHistoryPage";
 import OrderDetailPage from "./pages/shop/OrderDetailPage";
 import WishlistPage from "./pages/shop/WishlistPage";
+import AccountPage from "./pages/shop/AccountPage";
 
 import AuthEmailEntryPage from "./pages/auth/AuthEmailEntryPage";
 import LoginPasswordPage from "./pages/auth/LoginPasswordPage";
@@ -65,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute>
               <OrderDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <AccountPage />
             </ProtectedRoute>
           }
         />

@@ -115,6 +115,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(user.getPhone());
         user.setAddress(user.getAddress());
+        user.setDateOfBirth(user.getDateOfBirth());
         user.setRole(userRole);
         user.setEmailVerified(true);
         user.setEmailVerificationCode(null);
@@ -245,6 +246,7 @@ public class AuthServiceImpl implements AuthService {
         response.setEmail(user.getEmail());
         response.setPhone(user.getPhone());
         response.setAddress(user.getAddress());
+        response.setDateOfBirth(user.getDateOfBirth());
         response.setRoleName(user.getRole().getName().name());
         return response;
     }
