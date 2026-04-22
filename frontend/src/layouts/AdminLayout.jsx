@@ -76,7 +76,7 @@ const AdminLayout = () => {
         <div className={`flex items-center border-b border-slate-200/70 px-5 py-6 ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
-              <LogoIcon className="h-5 w-5" />
+              <LogoIcon className="h-5 w-5"  />
             </div>
             {sidebarExpanded ? (
               <div>

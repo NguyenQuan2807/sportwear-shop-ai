@@ -9,5 +9,6 @@ export const getAdminOrderDetailApi = (id) => {
 };
 
 export const updateAdminOrderStatusApi = (id, data) => {
-  return axiosClient.put(`/api/admin/orders/${id}/status`, data);
+  const payload = typeof data === "string" ? { status: data } : data;
+  return axiosClient.put(`/api/admin/orders/${id}/status`, payload);
 };

@@ -9,7 +9,6 @@ import {
   AdminButton,
   AdminCard,
   AdminFilterLabel,
-  AdminMetricCard,
   AdminPageHeader,
   AdminTableShell,
   adminInputClassName,
@@ -17,25 +16,19 @@ import {
   statusPillClassName,
 } from "../../components/admin/AdminShell";
 
-const defaultFilters = {
-  keyword: "",
-  roleName: "",
-  emailVerified: "",
-};
-
+const PAGE_SIZE = 10;
+const defaultFilters = { keyword: "", roleName: "", emailVerified: "" };
 const roleOptions = [
   { value: "", label: "Tất cả role" },
   { value: "ADMIN", label: "Admin" },
   { value: "USER", label: "User" },
 ];
-
 const verificationOptions = [
-  { value: "", label: "Tất cả trạng thái xác thực" },
+  { value: "", label: "Tất cả xác thực" },
   { value: "true", label: "Đã xác thực" },
   { value: "false", label: "Chưa xác thực" },
-  { value: "legacy", label: "Tài khoản cũ" },
+  { value: "legacy", label: "Legacy" },
 ];
-
 const emptyForm = {
   id: null,
   fullName: "",
@@ -44,15 +37,21 @@ const emptyForm = {
   roleName: "USER",
   emailVerified: true,
 };
-
 const formatDateTime = (value) => {
-  if (!value) return "Đang cập nhật";
+  if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 };
+const editBtn =
+  "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600 transition hover:-translate-y-0.5 hover:bg-amber-100";
+const deleteBtn =
+  "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:-translate-y-0.5 hover:bg-rose-100";
 
-const ManageUsersPage = () => {
+export default function ManageUsersPage() {
   const [users, setUsers] = useState([]);
   const [filters, setFilters] = useState(defaultFilters);
   const [loading, setLoading] = useState(true);
@@ -61,6 +60,7 @@ const ManageUsersPage = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsers = async () => {
     try {
@@ -69,45 +69,53 @@ const ManageUsersPage = () => {
       const response = await getAdminUsersApi();
       setUsers(response.data || []);
     } catch (error) {
-      const backendMessage = error?.response?.data?.message || "Không thể tải danh sách user";
-      setErrorMessage(backendMessage);
+      setErrorMessage(
+        error?.response?.data?.message || "Không thể tải danh sách user",
+      );
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchUsers();
   }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const keyword = filters.keyword.trim().toLowerCase();
-      const matchesKeyword =
-        !keyword ||
-        user.fullName?.toLowerCase().includes(keyword) ||
-        user.email?.toLowerCase().includes(keyword) ||
-        user.phone?.toLowerCase().includes(keyword);
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const keyword = filters.keyword.trim().toLowerCase();
+        const matchesKeyword =
+          !keyword ||
+          user.fullName?.toLowerCase().includes(keyword) ||
+          user.email?.toLowerCase().includes(keyword) ||
+          user.phone?.toLowerCase().includes(keyword);
+        const matchesRole =
+          !filters.roleName || user.roleName === filters.roleName;
+        const matchesVerification =
+          !filters.emailVerified ||
+          (filters.emailVerified === "legacy" && user.emailVerified == null) ||
+          (filters.emailVerified === "true" && user.emailVerified === true) ||
+          (filters.emailVerified === "false" && user.emailVerified === false);
+        return matchesKeyword && matchesRole && matchesVerification;
+      }),
+    [users, filters],
+  );
 
-      const matchesRole = !filters.roleName || user.roleName === filters.roleName;
-      const matchesVerification =
-        !filters.emailVerified ||
-        (filters.emailVerified === "legacy" && user.emailVerified == null) ||
-        (filters.emailVerified === "true" && user.emailVerified === true) ||
-        (filters.emailVerified === "false" && user.emailVerified === false);
-
-      return matchesKeyword && matchesRole && matchesVerification;
-    });
-  }, [users, filters]);
-
-  const adminCount = useMemo(() => users.filter((user) => user.roleName === "ADMIN").length, [users]);
-  const verifiedCount = useMemo(() => users.filter((user) => user.emailVerified === true).length, [users]);
-  const legacyCount = useMemo(() => users.filter((user) => user.emailVerified == null).length, [users]);
-
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
-  };
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const paginatedUsers = useMemo(
+    () =>
+      filteredUsers.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE,
+      ),
+    [filteredUsers, currentPage],
+  );
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const handleEditClick = (user) => {
     setEditingUser(user);
@@ -119,14 +127,10 @@ const ManageUsersPage = () => {
       roleName: user.roleName || "USER",
       emailVerified: user.emailVerified ?? true,
     });
-    setErrorMessage("");
-    setSuccessMessage("");
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!editingUser) return;
-
     try {
       setSubmitting(true);
       setErrorMessage("");
@@ -143,17 +147,15 @@ const ManageUsersPage = () => {
       setFormData(emptyForm);
       fetchUsers();
     } catch (error) {
-      const backendMessage = error?.response?.data?.message || "Không thể cập nhật user";
-      setErrorMessage(backendMessage);
+      setErrorMessage(
+        error?.response?.data?.message || "Không thể cập nhật user",
+      );
     } finally {
       setSubmitting(false);
     }
   };
-
   const handleDelete = async (user) => {
-    const confirmed = window.confirm(`Bạn có chắc muốn xóa user ${user.email}?`);
-    if (!confirmed) return;
-
+    if (!window.confirm(`Bạn có chắc muốn xóa user ${user.email}?`)) return;
     try {
       setErrorMessage("");
       setSuccessMessage("");
@@ -161,161 +163,392 @@ const ManageUsersPage = () => {
       setSuccessMessage("Xóa user thành công");
       fetchUsers();
     } catch (error) {
-      const backendMessage = error?.response?.data?.message || "Không thể xóa user";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || "Không thể xóa user");
     }
   };
 
+  const start =
+    filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, filteredUsers.length);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
         title="Quản lý người dùng"
-        description="Đồng bộ trang user theo giao diện admin mới, tập trung vào bảng dữ liệu, bộ lọc và form chỉnh sửa nhanh tài khoản."
-        breadcrumbs={["Admin", "Users", "Người dùng"]}
+        breadcrumbs={["Admin", "Người dùng"]}
       />
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard label="Tổng người dùng" value={users.length} helper="Toàn bộ tài khoản trong hệ thống" tone="brand" icon={<UsersIcon className="h-5 w-5" />} />
-        <AdminMetricCard label="Tài khoản admin" value={adminCount} helper="Tài khoản có quyền quản trị" tone="violet" icon={<ShieldIcon className="h-5 w-5" />} />
-        <AdminMetricCard label="Đã xác thực email" value={verifiedCount} helper="Tài khoản xác thực thành công" tone="emerald" icon={<MailCheckIcon className="h-5 w-5" />} />
-        <AdminMetricCard label="Legacy account" value={legacyCount} helper="Tài khoản cũ chưa có cờ xác thực" tone="amber" icon={<ClockIcon className="h-5 w-5" />} />
-      </div>
-
-      <AdminCard title="Bộ lọc người dùng" description="Lọc theo từ khóa, quyền và trạng thái xác thực email để quản lý nhanh hơn.">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_220px_260px]">
-          <div>
-            <AdminFilterLabel>Từ khóa</AdminFilterLabel>
-            <input type="text" name="keyword" value={filters.keyword} onChange={handleFilterChange} placeholder="Tìm theo họ tên, email, số điện thoại..." className={adminInputClassName} />
-          </div>
-          <div>
-            <AdminFilterLabel>Role</AdminFilterLabel>
-            <select name="roleName" value={filters.roleName} onChange={handleFilterChange} className={adminInputClassName}>
-              {roleOptions.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <AdminFilterLabel>Xác thực email</AdminFilterLabel>
-            <select name="emailVerified" value={filters.emailVerified} onChange={handleFilterChange} className={adminInputClassName}>
-              {verificationOptions.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <div>Tổng user phù hợp: <span className="font-semibold text-slate-900">{filteredUsers.length}</span></div>
-          <AdminButton variant="light" className="px-4 py-2.5" onClick={() => setFilters(defaultFilters)}>Xóa bộ lọc</AdminButton>
-        </div>
-      </AdminCard>
-
-      {successMessage ? <AdminAlert type="success">{successMessage}</AdminAlert> : null}
-      {errorMessage ? <AdminAlert type="error">{errorMessage}</AdminAlert> : null}
-
+      {successMessage ? (
+        <AdminAlert type="success">{successMessage}</AdminAlert>
+      ) : null}
+      {errorMessage ? (
+        <AdminAlert type="error">{errorMessage}</AdminAlert>
+      ) : null}
       {editingUser ? (
-        <AdminCard title={`Cập nhật user #${editingUser.id}`} description="Giữ nguyên logic chỉnh sửa user hiện tại, chỉ đồng bộ lại form theo style admin mới.">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AdminCard title={`Cập nhật user #${editingUser.id}`}>
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 gap-4 lg:grid-cols-2"
+          >
             <div>
               <AdminFilterLabel>Họ tên</AdminFilterLabel>
-              <input type="text" name="fullName" value={formData.fullName} onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))} className={adminInputClassName} required />
+              <input
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, fullName: e.target.value }))
+                }
+                className={adminInputClassName}
+                required
+              />
             </div>
             <div>
               <AdminFilterLabel>Email</AdminFilterLabel>
-              <input type="text" value={editingUser.email} disabled className={`${adminInputClassName} bg-slate-100 text-slate-500`} />
+              <input
+                value={editingUser.email}
+                disabled
+                className={`${adminInputClassName} bg-slate-100 text-slate-500`}
+              />
             </div>
             <div>
               <AdminFilterLabel>Số điện thoại</AdminFilterLabel>
-              <input type="text" name="phone" value={formData.phone} onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))} className={adminInputClassName} />
+              <input
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, phone: e.target.value }))
+                }
+                className={adminInputClassName}
+              />
             </div>
             <div>
               <AdminFilterLabel>Role</AdminFilterLabel>
-              <select name="roleName" value={formData.roleName} onChange={(e) => setFormData((prev) => ({ ...prev, roleName: e.target.value }))} className={adminInputClassName}>
+              <select
+                value={formData.roleName}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, roleName: e.target.value }))
+                }
+                className={adminInputClassName}
+              >
                 <option value="USER">User</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>
             <div>
-              <AdminFilterLabel>Trạng thái xác thực</AdminFilterLabel>
-              <select name="emailVerified" value={String(formData.emailVerified)} onChange={(e) => setFormData((prev) => ({ ...prev, emailVerified: e.target.value === "true" }))} className={adminInputClassName}>
+              <AdminFilterLabel>Xác thực</AdminFilterLabel>
+              <select
+                value={String(formData.emailVerified)}
+                onChange={(e) =>
+                  setFormData((p) => ({
+                    ...p,
+                    emailVerified: e.target.value === "true",
+                  }))
+                }
+                className={adminInputClassName}
+              >
                 <option value="true">Đã xác thực</option>
                 <option value="false">Chưa xác thực</option>
               </select>
             </div>
             <div className="lg:col-span-2">
               <AdminFilterLabel>Địa chỉ</AdminFilterLabel>
-              <textarea name="address" value={formData.address} onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))} className={adminTextareaClassName} />
+              <textarea
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, address: e.target.value }))
+                }
+                className={adminTextareaClassName}
+              />
             </div>
             <div className="flex flex-wrap gap-3 lg:col-span-2">
-              <AdminButton type="submit" variant="brand" disabled={submitting}>{submitting ? "Đang lưu..." : "Lưu thay đổi"}</AdminButton>
-              <AdminButton type="button" variant="light" onClick={() => { setEditingUser(null); setFormData(emptyForm); }}>Hủy</AdminButton>
+              <AdminButton type="submit" variant="brand" disabled={submitting}>
+                {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+              </AdminButton>
+              <AdminButton
+                type="button"
+                variant="light"
+                onClick={() => {
+                  setEditingUser(null);
+                  setFormData(emptyForm);
+                }}
+              >
+                Hủy
+              </AdminButton>
             </div>
           </form>
         </AdminCard>
       ) : null}
-
-      <AdminCard title="Danh sách người dùng" description="Xem nhanh user, role, trạng thái xác thực và thao tác chỉnh sửa / xóa ngay tại bảng.">
-        {loading ? (
-          <div className="text-sm text-slate-500">Đang tải danh sách user...</div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="text-sm text-slate-500">Không có user nào phù hợp với bộ lọc hiện tại.</div>
-        ) : (
-          <AdminTableShell>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
-                  <tr>
-                    <th className="px-5 py-4 font-semibold">ID</th>
-                    <th className="px-5 py-4 font-semibold">Người dùng</th>
-                    <th className="px-5 py-4 font-semibold">Role</th>
-                    <th className="px-5 py-4 font-semibold">Xác thực</th>
-                    <th className="px-5 py-4 font-semibold">Ngày tạo</th>
-                    <th className="px-5 py-4 font-semibold">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/80 bg-white">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50/70">
-                      <td className="px-5 py-4 font-semibold text-slate-800">#{user.id}</td>
-                      <td className="px-5 py-4">
-                        <div className="min-w-[280px]">
-                          <p className="font-semibold text-slate-900">{user.fullName}</p>
-                          <p className="mt-1 text-xs text-slate-500">{user.email}</p>
-                          <p className="mt-1 text-xs text-slate-500">{user.phone || "Chưa có số điện thoại"}</p>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={statusPillClassName(user.roleName === "ADMIN" ? "violet" : "neutral")}>{user.roleName}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        {user.emailVerified == null ? (
-                          <span className={statusPillClassName("warning")}>Legacy</span>
-                        ) : user.emailVerified ? (
-                          <span className={statusPillClassName("success")}>Đã xác thực</span>
-                        ) : (
-                          <span className={statusPillClassName("danger")}>Chưa xác thực</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-slate-500">{formatDateTime(user.createdAt)}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <AdminButton variant="warning" className="px-3 py-2 text-xs" onClick={() => handleEditClick(user)}>Sửa</AdminButton>
-                          <AdminButton variant="danger" className="px-3 py-2 text-xs" onClick={() => handleDelete(user)}>Xóa</AdminButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <AdminCard>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_220px]">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                <SearchIcon className="h-5 w-5" />
+              </span>
+              <input
+                name="keyword"
+                value={filters.keyword}
+                onChange={(e) =>
+                  setFilters((p) => ({ ...p, keyword: e.target.value }))
+                }
+                placeholder="Tìm kiếm người dùng..."
+                className={`${adminInputClassName} pl-12`}
+              />
             </div>
-          </AdminTableShell>
-        )}
+            <select
+              value={filters.roleName}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, roleName: e.target.value }))
+              }
+              className={adminInputClassName}
+            >
+              {roleOptions.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filters.emailVerified}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, emailVerified: e.target.value }))
+              }
+              className={adminInputClassName}
+            >
+              {verificationOptions.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {loading ? (
+            <div className="text-sm text-slate-500">
+              Đang tải danh sách user...
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="text-sm text-slate-500">Không có user phù hợp.</div>
+          ) : (
+            <>
+              <AdminTableShell>
+                <div className="overflow-x-auto">
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="border-b border-slate-200 bg-white text-left text-slate-500">
+                      <tr>
+                        <th className="w-[18%] px-4 py-3 font-semibold">
+                          Người dùng
+                        </th>
+                        <th className="w-[24%] px-4 py-3 font-semibold">
+                          Email
+                        </th>
+                        <th className="w-[14%] px-4 py-3 font-semibold">SĐT</th>
+                        <th className="w-[10%] px-4 py-3 font-semibold">
+                          Role
+                        </th>
+                        <th className="w-[12%] px-4 py-3 font-semibold">
+                          Xác thực
+                        </th>
+                        <th className="w-[14%] px-4 py-3 font-semibold">
+                          Ngày tạo
+                        </th>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/80 bg-white">
+                      {paginatedUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-900">
+                              {user.fullName || "Chưa cập nhật"}
+                            </p>
+                            <p className="text-xs text-slate-500">#{user.id}</p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {user.email}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {user.phone || "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={statusPillClassName(
+                                user.roleName === "ADMIN"
+                                  ? "violet"
+                                  : "neutral",
+                              )}
+                            >
+                              {user.roleName}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={statusPillClassName(
+                                user.emailVerified === true
+                                  ? "success"
+                                  : user.emailVerified === false
+                                    ? "warning"
+                                    : "neutral",
+                              )}
+                            >
+                              {user.emailVerified === true
+                                ? "Đã xác thực"
+                                : user.emailVerified === false
+                                  ? "Chưa xác thực"
+                                  : "Legacy"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">
+                            {formatDateTime(user.createdAt)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                title="Sửa user"
+                                className={editBtn}
+                                onClick={() => handleEditClick(user)}
+                              >
+                                <EditIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                title="Xóa user"
+                                className={deleteBtn}
+                                onClick={() => handleDelete(user)}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </AdminTableShell>
+              <PaginationBar
+                start={start}
+                end={end}
+                total={filteredUsers.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
+        </div>
       </AdminCard>
     </div>
   );
-};
+}
 
-function iconProps(className) { return { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", className }; }
-function UsersIcon({ className = "h-5 w-5" }) { return <svg {...iconProps(className)}><path d="M16 21v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1" /><circle cx="9.5" cy="8" r="3.5" /><path d="M20 21v-1a4 4 0 0 0-3-3.87" /><path d="M16.5 4.13a3.5 3.5 0 0 1 0 7.74" /></svg>; }
-function ShieldIcon({ className = "h-5 w-5" }) { return <svg {...iconProps(className)}><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3Z" /><path d="m9.5 12 1.8 1.8 3.7-3.7" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function MailCheckIcon({ className = "h-5 w-5" }) { return <svg {...iconProps(className)}><path d="M4 6h16v12H4z" /><path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round" /><path d="m9 17 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function ClockIcon({ className = "h-5 w-5" }) { return <svg {...iconProps(className)}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-
-export default ManageUsersPage;
+function SearchIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function EditIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M4 20h4l10-10-4-4L4 16v4Z" strokeLinejoin="round" />
+      <path d="m12 6 4 4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function TrashIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M4 7h16" strokeLinecap="round" />
+      <path d="M10 11v5M14 11v5" strokeLinecap="round" />
+      <path d="M6 7l1 12h10l1-12M9 7V4h6v3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ChevronLeftIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ChevronRightIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function PaginationBar({
+  start,
+  end,
+  total,
+  currentPage,
+  totalPages,
+  onPageChange,
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+      <span>
+        Hiển thị {start}-{end} trên {total} dữ liệu
+      </span>
+      <div className="flex items-center gap-2 self-end md:self-auto">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <ChevronLeftIcon />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => onPageChange(page)}
+            className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${currentPage === page ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <ChevronRightIcon />
+        </button>
+      </div>
+    </div>
+  );
+}

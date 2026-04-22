@@ -11,228 +11,376 @@ import {
   AdminAlert,
   AdminButton,
   AdminCard,
-  AdminFilterLabel,
-  AdminMetricCard,
   AdminPageHeader,
   AdminTableShell,
   adminInputClassName,
   statusPillClassName,
 } from "../../components/admin/AdminShell";
 
-const normalizeText = (value) =>
-  String(value || "")
+const PAGE_SIZE = 10;
+const editBtn =
+  "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600 transition hover:-translate-y-0.5 hover:bg-amber-100";
+const deleteBtn =
+  "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:-translate-y-0.5 hover:bg-rose-100";
+const normalizeText = (v) =>
+  String(v || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
-
-const ManageCategoriesPage = () => {
-  const [categories, setCategories] = useState([]);
+export default function ManageCategoriesPage() {
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-
-  const fetchCategories = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const fetchItems = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-      const response = await getAdminCategoriesApi();
-      setCategories(response.data || []);
-    } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Không thể tải danh sách danh mục");
+      const res = await getAdminCategoriesApi();
+      setItems(res.data || []);
+    } catch (e) {
+      setErrorMessage(
+        e?.response?.data?.message || "Không thể tải danh sách danh mục",
+      );
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
-    fetchCategories();
+    fetchItems();
   }, []);
-
-  const filteredCategories = useMemo(() => {
-    const keyword = normalizeText(searchTerm);
-    if (!keyword) return categories;
-
-    return categories.filter((category) =>
-      [category.id, category.name, category.slug, category.description, category.isActive ? "hoạt động" : "ẩn"].some((value) =>
-        normalizeText(value).includes(keyword)
-      )
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+  const filtered = useMemo(() => {
+    const k = normalizeText(searchTerm);
+    if (!k) return items;
+    return items.filter((item) =>
+      [
+        item.id,
+        item.name,
+        item.slug,
+        item.description,
+        item.isActive ? "hoat dong" : "an",
+      ].some((v) => normalizeText(v).includes(k)),
     );
-  }, [categories, searchTerm]);
-
-  const totalCategories = categories.length;
-  const activeCategories = categories.filter((item) => item.isActive).length;
-  const inactiveCategories = totalCategories - activeCategories;
-
-  const handleCreateClick = () => {
-    setEditingCategory(null);
-    setShowForm(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-  };
-
+  }, [items, searchTerm]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = useMemo(
+    () =>
+      filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const handleEditClick = async (id) => {
     try {
-      setErrorMessage("");
-      setSuccessMessage("");
-      const response = await getAdminCategoryDetailApi(id);
-      setEditingCategory(response.data);
+      const res = await getAdminCategoryDetailApi(id);
+      setEditingItem(res.data);
       setShowForm(true);
-    } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Không thể tải chi tiết danh mục");
+    } catch (e) {
+      setErrorMessage(
+        e?.response?.data?.message || "Không thể tải chi tiết danh mục",
+      );
     }
   };
-
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa danh mục này?")) return;
-
     try {
-      setErrorMessage("");
-      setSuccessMessage("");
       await deleteAdminCategoryApi(id);
       setSuccessMessage("Xóa danh mục thành công");
-      fetchCategories();
-    } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Không thể xóa danh mục");
+      fetchItems();
+    } catch (e) {
+      setErrorMessage(e?.response?.data?.message || "Không thể xóa danh mục");
     }
   };
-
-  const handleSubmitForm = async (formData) => {
+  const handleSubmit = async (formData) => {
     try {
       setSubmitting(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      if (editingCategory) {
-        await updateAdminCategoryApi(editingCategory.id, formData);
+      if (editingItem) {
+        await updateAdminCategoryApi(editingItem.id, formData);
         setSuccessMessage("Cập nhật danh mục thành công");
       } else {
         await createAdminCategoryApi(formData);
         setSuccessMessage("Tạo danh mục thành công");
       }
-
       setShowForm(false);
-      setEditingCategory(null);
-      fetchCategories();
-    } catch (error) {
-      setErrorMessage(error?.response?.data?.message || "Không thể lưu danh mục");
+      setEditingItem(null);
+      fetchItems();
+    } catch (e) {
+      setErrorMessage(e?.response?.data?.message || "Không thể lưu danh mục");
     } finally {
       setSubmitting(false);
     }
   };
-
+  const start = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, filtered.length);
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
         title="Quản lý danh mục"
-        description="Đồng bộ lại giao diện quản trị danh mục theo bộ khung admin mới, vẫn giữ nguyên form và API hiện tại."
         breadcrumbs={["Admin", "Danh mục"]}
-        action={<AdminButton variant="brand" onClick={handleCreateClick}>Thêm danh mục</AdminButton>}
+        action={
+          <AdminButton
+            variant="brand"
+            onClick={() => {
+              setEditingItem(null);
+              setShowForm(true);
+            }}
+          >
+            Thêm danh mục
+          </AdminButton>
+        }
       />
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        <AdminMetricCard label="Tổng danh mục" value={totalCategories} helper="Tất cả danh mục trong hệ thống" tone="brand" icon={<LayersIcon className="h-5 w-5" />} />
-        <AdminMetricCard label="Đang hoạt động" value={activeCategories} helper="Danh mục đang hiển thị cho shop" tone="emerald" icon={<CheckIcon className="h-5 w-5" />} />
-        <AdminMetricCard label="Đang ẩn" value={inactiveCategories} helper="Danh mục đang tạm ẩn" tone="amber" icon={<EyeOffIcon className="h-5 w-5" />} />
-      </div>
-
-      {successMessage ? <AdminAlert type="success">{successMessage}</AdminAlert> : null}
-      {errorMessage ? <AdminAlert type="error">{errorMessage}</AdminAlert> : null}
-
-      <AdminCard title="Bộ lọc danh mục" description="Tìm kiếm theo tên, slug, mô tả hoặc trạng thái.">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
-          <div>
-            <AdminFilterLabel>Tìm kiếm</AdminFilterLabel>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Tìm theo tên, slug, mô tả, trạng thái..."
-              className={adminInputClassName}
-            />
-          </div>
-          <div className="flex items-end">
-            <AdminButton variant="light" className="w-full" onClick={() => setSearchTerm("")}>Xóa bộ lọc</AdminButton>
-          </div>
-        </div>
-      </AdminCard>
-
+      {successMessage ? (
+        <AdminAlert type="success">{successMessage}</AdminAlert>
+      ) : null}
+      {errorMessage ? (
+        <AdminAlert type="error">{errorMessage}</AdminAlert>
+      ) : null}
       {showForm ? (
-        <AdminCard title={editingCategory ? "Cập nhật danh mục" : "Tạo danh mục mới"} description="Sử dụng form hiện tại của hệ thống nhưng hiển thị trong card mới.">
+        <AdminCard
+          title={editingItem ? "Cập nhật danh mục" : "Tạo danh mục mới"}
+        >
           <AdminCategoryForm
-            initialData={editingCategory}
-            onSubmit={handleSubmitForm}
+            initialData={editingItem}
+            onSubmit={handleSubmit}
             submitting={submitting}
             onCancel={() => {
               setShowForm(false);
-              setEditingCategory(null);
+              setEditingItem(null);
             }}
           />
         </AdminCard>
       ) : null}
-
-      <AdminCard title="Danh sách danh mục" description={`Hiển thị ${filteredCategories.length} kết quả phù hợp.`}>
-        {loading ? (
-          <div className="text-sm text-slate-500">Đang tải danh sách danh mục...</div>
-        ) : filteredCategories.length === 0 ? (
-          <div className="text-sm text-slate-500">{searchTerm ? "Không tìm thấy danh mục phù hợp." : "Chưa có danh mục nào."}</div>
-        ) : (
-          <AdminTableShell>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left text-slate-500">
-                  <tr>
-                    <th className="px-5 py-4 font-semibold">ID</th>
-                    <th className="px-5 py-4 font-semibold">Tên</th>
-                    <th className="px-5 py-4 font-semibold">Slug</th>
-                    <th className="px-5 py-4 font-semibold">Mô tả</th>
-                    <th className="px-5 py-4 font-semibold">Trạng thái</th>
-                    <th className="px-5 py-4 font-semibold">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/80 bg-white">
-                  {filteredCategories.map((category) => (
-                    <tr key={category.id} className="hover:bg-slate-50/70">
-                      <td className="px-5 py-4 text-slate-500">#{category.id}</td>
-                      <td className="px-5 py-4 font-semibold text-slate-900">{category.name}</td>
-                      <td className="px-5 py-4 text-slate-500">{category.slug}</td>
-                      <td className="px-5 py-4 text-slate-500">{category.description || "-"}</td>
-                      <td className="px-5 py-4">
-                        <span className={statusPillClassName(category.isActive ? "success" : "neutral")}>{category.isActive ? "Hoạt động" : "Ẩn"}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <AdminButton variant="warning" className="px-4 py-2 text-xs" onClick={() => handleEditClick(category.id)}>Sửa</AdminButton>
-                          <AdminButton variant="danger" className="px-4 py-2 text-xs" onClick={() => handleDelete(category.id)}>Xóa</AdminButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <AdminCard>
+        <div className="space-y-4">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <SearchIcon className="h-5 w-5" />
+            </span>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm kiếm danh mục..."
+              className={`${adminInputClassName} pl-12`}
+            />
+          </div>
+          {loading ? (
+            <div className="text-sm text-slate-500">Đang tải danh mục...</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-sm text-slate-500">
+              Không có danh mục phù hợp.
             </div>
-          </AdminTableShell>
-        )}
+          ) : (
+            <>
+              <AdminTableShell>
+                <div className="overflow-x-auto">
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="border-b border-slate-200 bg-white text-left text-slate-500">
+                      <tr>
+                        <th className="w-[24%] px-4 py-3 font-semibold">
+                          Danh mục
+                        </th>
+                        <th className="w-[20%] px-4 py-3 font-semibold">
+                          Slug
+                        </th>
+                        <th className="w-[34%] px-4 py-3 font-semibold">
+                          Mô tả
+                        </th>
+                        <th className="w-[12%] px-4 py-3 font-semibold">
+                          Trạng thái
+                        </th>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/80 bg-white">
+                      {paginated.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-900">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-slate-500">#{item.id}</p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500">
+                            {item.slug}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            <div
+                              className="max-w-[320px] truncate"
+                              title={item.description}
+                            >
+                              {item.description || "-"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={statusPillClassName(
+                                item.isActive ? "success" : "danger",
+                              )}
+                            >
+                              {item.isActive ? "Đang bật" : "Đang ẩn"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                title="Sửa danh mục"
+                                className={editBtn}
+                                onClick={() => handleEditClick(item.id)}
+                              >
+                                <EditIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                title="Xóa danh mục"
+                                className={deleteBtn}
+                                onClick={() => handleDelete(item.id)}
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </AdminTableShell>
+              <PaginationBar
+                start={start}
+                end={end}
+                total={filtered.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
+        </div>
       </AdminCard>
     </div>
   );
-};
-
-function iconProps(className) {
-  return { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", className };
 }
-function LayersIcon({ className = "h-5 w-5" }) {
-  return <svg {...iconProps(className)}><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" strokeLinejoin="round" /></svg>;
+function SearchIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
 }
-function CheckIcon({ className = "h-5 w-5" }) {
-  return <svg {...iconProps(className)}><path d="m5 12 4 4L19 6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+function EditIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M4 20h4l10-10-4-4L4 16v4Z" strokeLinejoin="round" />
+      <path d="m12 6 4 4" strokeLinecap="round" />
+    </svg>
+  );
 }
-function EyeOffIcon({ className = "h-5 w-5" }) {
-  return <svg {...iconProps(className)}><path d="m3 3 18 18" strokeLinecap="round" /><path d="M10.58 10.58A2 2 0 0 0 13.42 13.42" /><path d="M9.88 5.09A9.77 9.77 0 0 1 12 4.8c4.7 0 8.6 3.11 9.8 7.2a10.76 10.76 0 0 1-4.04 5.3" /><path d="M6.61 6.61A10.75 10.75 0 0 0 2.2 12c.82 2.82 2.93 5.08 5.67 6.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+function TrashIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M4 7h16" strokeLinecap="round" />
+      <path d="M10 11v5M14 11v5" strokeLinecap="round" />
+      <path d="M6 7l1 12h10l1-12M9 7V4h6v3" strokeLinejoin="round" />
+    </svg>
+  );
 }
-
-export default ManageCategoriesPage;
+function ChevronLeftIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ChevronRightIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function PaginationBar({
+  start,
+  end,
+  total,
+  currentPage,
+  totalPages,
+  onPageChange,
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+      <span>
+        Hiển thị {start}-{end} trên {total} dữ liệu
+      </span>
+      <div className="flex items-center gap-2 self-end md:self-auto">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <ChevronLeftIcon />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => onPageChange(page)}
+            className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${currentPage === page ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <ChevronRightIcon />
+        </button>
+      </div>
+    </div>
+  );
+}

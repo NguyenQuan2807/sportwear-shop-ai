@@ -195,10 +195,37 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
 
-        order.setStatus(request.getStatus());
+        OrderStatus currentStatus = order.getStatus();
+        OrderStatus nextStatus = request.getStatus();
+
+        if (nextStatus == null) {
+            throw new BadRequestException("Trạng thái đơn hàng không được để trống");
+        }
+
+        if (currentStatus == nextStatus) {
+            return mapToOrderDetailResponse(order);
+        }
+
+        if (!isValidStatusTransition(currentStatus, nextStatus)) {
+            throw new BadRequestException(
+                    "Không thể chuyển trạng thái từ " + currentStatus + " sang " + nextStatus
+            );
+        }
+
+        order.setStatus(nextStatus);
         orderRepository.save(order);
 
         return mapToOrderDetailResponse(order);
+    }
+
+    private boolean isValidStatusTransition(OrderStatus currentStatus, OrderStatus nextStatus) {
+        return switch (currentStatus) {
+            case PENDING -> nextStatus == OrderStatus.CONFIRMED || nextStatus == OrderStatus.CANCELLED;
+            case CONFIRMED -> nextStatus == OrderStatus.SHIPPING || nextStatus == OrderStatus.CANCELLED;
+            case SHIPPING -> nextStatus == OrderStatus.DELIVERED;
+            case DELIVERED -> nextStatus == OrderStatus.COMPLETED;
+            case COMPLETED, CANCELLED -> false;
+        };
     }
 
     private User getUserByEmail(String email) {
