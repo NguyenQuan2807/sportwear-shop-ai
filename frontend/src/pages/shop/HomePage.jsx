@@ -498,7 +498,7 @@ function HomePage() {
         >
           {activePromotion ? (
             <div className="flex w-full max-w-6xl items-center justify-center gap-3">
-              <p className="line-clamp-1 text-sm font-semibold tracking-[0.01em] text-black sm:text-base">
+              <p className="line-clamp-1 text-sm tracking-[0.01em] text-black sm:text-base">
                 {formatPromotionHeadline(activePromotion)}
               </p>
               {promotions.length > 1 ? (
@@ -542,7 +542,7 @@ function HomePage() {
         <div className={sectionInnerClass}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-3xl text-black sm:text-2xl lg:text-2xl">
+              <h2 className="text-[30px] font-black text-black sm:text-[30px] lg:text-[30px]">
                 Mua sắm theo môn thể thao
               </h2>
             </div>
@@ -591,7 +591,7 @@ function HomePage() {
                   />
                 </div>
                 <div className="pt-4">
-                  <p className="text-2xl uppercase tracking-[0.08em] sm:text-2xl">
+                  <p className="text-[20px] tracking-[0.08em] sm:text-[20px]">
                     {sport.name}
                   </p>
                 </div>

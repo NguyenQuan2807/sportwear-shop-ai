@@ -22,11 +22,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = getAccessToken();
+
     if (token) {
       fetchCurrentUser();
-    } else {
-      setLoading(false);
+      return;
     }
+
+    setLoading(false);
   }, []);
 
   const login = (tokenOrPayload, userData) => {
@@ -37,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     saveAuthSession(tokenOrPayload || {});
-    setUser(tokenOrPayload?.user || null);
+    setUser(tokenOrPayload?.user || userData || null);
   };
 
   const logout = () => {
@@ -46,7 +48,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser, refreshCurrentUser: fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

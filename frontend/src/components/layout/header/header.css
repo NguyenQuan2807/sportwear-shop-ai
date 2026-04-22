@@ -45,7 +45,7 @@
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: #475569;
+  color: #3d52c9;
   transition: color 0.18s ease;
 }
 
@@ -87,10 +87,10 @@
   display: inline-flex;
   align-items: center;
   height: 64px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   letter-spacing: 0.01em;
-  color: #334155;
+  color: #000000;
   transition: color 0.2s ease;
 }
 

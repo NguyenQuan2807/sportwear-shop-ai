@@ -11,6 +11,7 @@ const productUrl = (params = {}) => {
   return queryString ? `/products?${queryString}` : "/products";
 };
 
+
 const quickSearches = [
   "Giày chạy bộ",
   "Áo thể thao nam",
@@ -216,7 +217,7 @@ const navItems = [
   },
   {
     label: "Sale",
-    href: productUrl({ sale: "true" }),
+    href: productUrl({ promotion: "true" }),
     type: "mega",
     columns: [
       {

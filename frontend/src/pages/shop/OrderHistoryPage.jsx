@@ -42,10 +42,13 @@ const OrderItemStrip = ({ items = [] }) => {
   if (!items.length) return null;
 
   return (
-    <div className="mt-5 overflow-x-auto pb-2">
-      <div className="flex min-w-max gap-3">
+    <div className="mt-5 w-full max-w-[420px] overflow-x-auto pb-2">
+      <div className="flex w-max gap-3">
         {items.map((item, index) => (
-          <div key={item.id || `${item.productName}-${index}`} className="w-[96px] shrink-0">
+          <div
+            key={item.id || `${item.productName}-${index}`}
+            className="w-[96px] shrink-0 snap-start"
+          >
             <div className="aspect-square overflow-hidden bg-[#f5f5f5]">
               {item.thumbnailUrl ? (
                 <img
@@ -146,10 +149,12 @@ const OrderHistoryPage = () => {
                   <div className="h-4 animate-pulse rounded bg-black/10" />
                   <div className="h-4 animate-pulse rounded bg-black/10" />
                 </div>
-                <div className="mt-5 flex gap-3">
-                  {Array.from({ length: 4 }).map((__, itemIndex) => (
-                    <div key={itemIndex} className="h-24 w-24 animate-pulse rounded bg-black/10" />
-                  ))}
+                <div className="mt-5 w-full max-w-[420px] overflow-hidden">
+                  <div className="flex gap-3">
+                    {Array.from({ length: 4 }).map((__, itemIndex) => (
+                      <div key={itemIndex} className="h-24 w-24 shrink-0 animate-pulse rounded bg-black/10" />
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
