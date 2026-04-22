@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AdminButton,
+  AdminFilterLabel,
+  adminInputClassName,
+} from "../admin/AdminShell";
 
 const defaultForm = {
   size: "",
@@ -8,13 +13,18 @@ const defaultForm = {
   sku: "",
 };
 
-const AdminProductVariantForm = ({
-  initialData = null,
-  onSubmit,
-  submitting,
-  onCancel,
-}) => {
+const sizeOptions = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
+
+const buildSku = ({ color, size }) => {
+  const colorKey = String(color || "").trim().toUpperCase().replace(/\s+/g, "-");
+  const sizeKey = String(size || "").trim().toUpperCase();
+  if (!colorKey || !sizeKey) return "";
+  return `${colorKey}-${sizeKey}`;
+};
+
+const AdminProductVariantForm = ({ initialData = null, onSubmit, submitting, onCancel }) => {
   const [formData, setFormData] = useState(defaultForm);
+  const isEditing = useMemo(() => Boolean(initialData?.id), [initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -32,19 +42,17 @@ const AdminProductVariantForm = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "price" || name === "stockQuantity"
-          ? value
-          : value,
-    }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (!isEditing && (name === "size" || name === "color") && !prev.sku.trim()) {
+        next.sku = buildSku({ color: name === "color" ? value : prev.color, size: name === "size" ? value : prev.size });
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     onSubmit({
       ...formData,
       price: Number(formData.price),
@@ -53,87 +61,37 @@ const AdminProductVariantForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid gap-5 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Size</label>
-          <input
-            type="text"
-            name="size"
-            value={formData.size}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 px-4 py-3"
-            required
-          />
+          <AdminFilterLabel>Size</AdminFilterLabel>
+          <select name="size" value={formData.size} onChange={handleChange} className={adminInputClassName} required>
+            <option value="">Chọn size</option>
+            {sizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
         </div>
-
         <div>
-          <label className="mb-1 block text-sm font-medium">Màu sắc</label>
-          <input
-            type="text"
-            name="color"
-            value={formData.color}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 px-4 py-3"
-            required
-          />
+          <AdminFilterLabel>Màu sắc</AdminFilterLabel>
+          <input type="text" name="color" value={formData.color} onChange={handleChange} className={adminInputClassName} placeholder="Ví dụ: Đỏ, Trắng, Xanh navy" required />
         </div>
-
         <div>
-          <label className="mb-1 block text-sm font-medium">Giá</label>
-          <input
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 px-4 py-3"
-            required
-            min="0"
-          />
+          <AdminFilterLabel>Giá bán</AdminFilterLabel>
+          <input type="number" name="price" value={formData.price} onChange={handleChange} className={adminInputClassName} required min="0" />
         </div>
-
         <div>
-          <label className="mb-1 block text-sm font-medium">Tồn kho</label>
-          <input
-            type="number"
-            name="stockQuantity"
-            value={formData.stockQuantity}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-slate-300 px-4 py-3"
-            required
-            min="0"
-          />
+          <AdminFilterLabel>Tồn kho</AdminFilterLabel>
+          <input type="number" name="stockQuantity" value={formData.stockQuantity} onChange={handleChange} className={adminInputClassName} required min="0" />
         </div>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">SKU</label>
-        <input
-          type="text"
-          name="sku"
-          value={formData.sku}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
+        <AdminFilterLabel>SKU</AdminFilterLabel>
+        <input type="text" name="sku" value={formData.sku} onChange={handleChange} className={adminInputClassName} placeholder="Do-trang-M hoặc mã riêng của bạn" required />
       </div>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {submitting ? "Đang lưu..." : "Lưu biến thể"}
-        </button>
-
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-100"
-        >
-          Hủy
-        </button>
+      <div className="flex flex-wrap gap-3 pt-1">
+        <AdminButton type="submit" variant="brand" disabled={submitting}>{submitting ? "Đang lưu..." : isEditing ? "Lưu thay đổi" : "Tạo biến thể"}</AdminButton>
+        <AdminButton type="button" variant="light" onClick={onCancel}>Hủy</AdminButton>
       </div>
     </form>
   );

@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AdminButton,
+  AdminFilterLabel,
+  adminInputClassName,
+} from "../admin/AdminShell";
 
 const defaultForm = {
   name: "",
@@ -7,13 +12,20 @@ const defaultForm = {
   isActive: true,
 };
 
-const AdminCategoryForm = ({
-  initialData = null,
-  onSubmit,
-  submitting,
-  onCancel,
-}) => {
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const checkboxClassName = "h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500";
+
+const AdminCategoryForm = ({ initialData = null, onSubmit, submitting, onCancel }) => {
   const [formData, setFormData] = useState(defaultForm);
+  const isEditing = useMemo(() => Boolean(initialData?.id), [initialData]);
 
   useEffect(() => {
     if (initialData) {
@@ -21,8 +33,7 @@ const AdminCategoryForm = ({
         name: initialData.name || "",
         slug: initialData.slug || "",
         description: initialData.description || "",
-        isActive:
-          initialData.isActive !== undefined ? initialData.isActive : true,
+        isActive: initialData.isActive !== undefined ? initialData.isActive : true,
       });
     } else {
       setFormData(defaultForm);
@@ -32,10 +43,18 @@ const AdminCategoryForm = ({
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setFormData((prev) => {
+      const nextData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      if (name === "name" && !isEditing && !prev.slug.trim()) {
+        nextData.slug = slugify(value);
+      }
+
+      return nextData;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -44,68 +63,70 @@ const AdminCategoryForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium">Tên danh mục</label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-5 md:grid-cols-2">
+        <div>
+          <AdminFilterLabel>Tên danh mục</AdminFilterLabel>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={adminInputClassName}
+            placeholder="Ví dụ: Giày chạy bộ"
+            required
+          />
+        </div>
+
+        <div>
+          <AdminFilterLabel>Slug</AdminFilterLabel>
+          <input
+            type="text"
+            name="slug"
+            value={formData.slug}
+            onChange={handleChange}
+            className={adminInputClassName}
+            placeholder="giay-chay-bo"
+            required
+          />
+        </div>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Slug</label>
-        <input
-          type="text"
-          name="slug"
-          value={formData.slug}
-          onChange={handleChange}
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Mô tả</label>
+        <AdminFilterLabel>Mô tả</AdminFilterLabel>
         <textarea
           name="description"
           value={formData.description}
           onChange={handleChange}
-          rows="4"
-          className="w-full rounded-lg border border-slate-300 px-4 py-3"
+          rows="5"
+          className={adminInputClassName}
+          placeholder="Mô tả ngắn giúp admin dễ quản lý danh mục..."
         />
       </div>
 
-      <label className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          name="isActive"
-          checked={formData.isActive}
-          onChange={handleChange}
-        />
-        <span className="text-sm font-medium">Đang hoạt động</span>
-      </label>
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+        <label className="flex items-start gap-3 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            name="isActive"
+            checked={formData.isActive}
+            onChange={handleChange}
+            className={checkboxClassName}
+          />
+          <span>
+            <span className="block font-semibold text-slate-900">Kích hoạt danh mục</span>
+            <span className="mt-1 block">Nếu tắt, danh mục sẽ không còn hiển thị trên storefront.</span>
+          </span>
+        </label>
+      </div>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {submitting ? "Đang lưu..." : "Lưu"}
-        </button>
-
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-100"
-        >
+      <div className="flex flex-wrap gap-3 pt-1">
+        <AdminButton type="submit" variant="brand" disabled={submitting}>
+          {submitting ? "Đang lưu..." : isEditing ? "Lưu thay đổi" : "Tạo danh mục"}
+        </AdminButton>
+        <AdminButton type="button" variant="light" onClick={onCancel}>
           Hủy
-        </button>
+        </AdminButton>
       </div>
     </form>
   );

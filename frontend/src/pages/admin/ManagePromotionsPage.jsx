@@ -7,15 +7,17 @@ import {
   updateAdminPromotionApi,
 } from "../../services/adminPromotionService";
 import AdminPromotionForm from "../../components/common/AdminPromotionForm";
-import AdminTableToolbar from "../../components/common/AdminTableToolbar";
-
-const STATUS_BADGE = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  SCHEDULED: "bg-blue-100 text-blue-700",
-  ACTIVE: "bg-green-100 text-green-700",
-  EXPIRED: "bg-orange-100 text-orange-700",
-  DISABLED: "bg-red-100 text-red-700",
-};
+import {
+  AdminAlert,
+  AdminButton,
+  AdminCard,
+  AdminFilterLabel,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminTableShell,
+  adminInputClassName,
+  statusPillClassName,
+} from "../../components/admin/AdminShell";
 
 const normalizeText = (value) =>
   String(value || "")
@@ -23,6 +25,21 @@ const normalizeText = (value) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+
+const toneByStatus = (status) => {
+  switch (status) {
+    case "ACTIVE":
+      return "success";
+    case "SCHEDULED":
+      return "info";
+    case "EXPIRED":
+      return "warning";
+    case "DISABLED":
+      return "danger";
+    default:
+      return "neutral";
+  }
+};
 
 const ManagePromotionsPage = () => {
   const [promotions, setPromotions] = useState([]);
@@ -41,9 +58,7 @@ const ManagePromotionsPage = () => {
       const response = await getAdminPromotionsApi();
       setPromotions(response.data || []);
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể tải danh sách promotion";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || "Không thể tải danh sách promotion");
     } finally {
       setLoading(false);
     }
@@ -58,21 +73,16 @@ const ManagePromotionsPage = () => {
     if (!keyword) return promotions;
 
     return promotions.filter((promotion) =>
-      [
-        promotion.id,
-        promotion.name,
-        promotion.slug,
-        promotion.promotionType,
-        promotion.discountType,
-        promotion.discountValue,
-        promotion.priority,
-        promotion.status,
-        promotion.startTime,
-        promotion.endTime,
-        `${promotion.targets?.length || 0}`,
-      ].some((value) => normalizeText(value).includes(keyword))
+      [promotion.id, promotion.name, promotion.slug, promotion.promotionType, promotion.discountType, promotion.discountValue, promotion.priority, promotion.status, promotion.startTime, promotion.endTime, `${promotion.targets?.length || 0}`].some((value) =>
+        normalizeText(value).includes(keyword)
+      )
     );
   }, [promotions, searchTerm]);
+
+  const totalPromotions = promotions.length;
+  const activePromotions = promotions.filter((item) => item.status === "ACTIVE").length;
+  const scheduledPromotions = promotions.filter((item) => item.status === "SCHEDULED").length;
+  const expiredPromotions = promotions.filter((item) => item.status === "EXPIRED").length;
 
   const handleCreateClick = () => {
     setEditingPromotion(null);
@@ -89,15 +99,12 @@ const ManagePromotionsPage = () => {
       setEditingPromotion(response.data);
       setShowForm(true);
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể tải chi tiết promotion";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || "Không thể tải chi tiết promotion");
     }
   };
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Bạn có chắc muốn xóa chương trình này?");
-    if (!confirmed) return;
+    if (!window.confirm("Bạn có chắc muốn xóa chương trình này?")) return;
 
     try {
       setErrorMessage("");
@@ -106,9 +113,7 @@ const ManagePromotionsPage = () => {
       setSuccessMessage("Xóa promotion thành công");
       fetchPromotions();
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể xóa promotion";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || "Không thể xóa promotion");
     }
   };
 
@@ -130,136 +135,139 @@ const ManagePromotionsPage = () => {
       setEditingPromotion(null);
       fetchPromotions();
     } catch (error) {
-      const backendMessage =
-        error?.response?.data?.message || "Không thể lưu promotion";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || "Không thể lưu promotion");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelForm = () => {
-    setShowForm(false);
-    setEditingPromotion(null);
-  };
-
   return (
     <div className="space-y-6">
-      <AdminTableToolbar
+      <AdminPageHeader
         title="Quản lý chương trình khuyến mãi"
-        description="Tạo flash sale, chương trình giảm giá và target áp dụng"
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        placeholder="Tìm theo tên, slug, trạng thái, loại, discount..."
-        createLabel="Thêm chương trình"
-        onCreateClick={handleCreateClick}
-        resultCount={filteredPromotions.length}
+        description="Đồng bộ trang promotion với layout mới để dễ theo dõi trạng thái, loại và target áp dụng."
+        breadcrumbs={["Admin", "Khuyến mãi"]}
+        action={<AdminButton variant="brand" onClick={handleCreateClick}>Thêm chương trình</AdminButton>}
       />
 
-      {successMessage && (
-        <div className="rounded-xl bg-green-100 p-4 text-green-700 shadow">
-          {successMessage}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard label="Tổng chương trình" value={totalPromotions} helper="Tất cả promotion hiện có" tone="brand" icon={<SparklesIcon className="h-5 w-5" />} />
+        <AdminMetricCard label="Đang hoạt động" value={activePromotions} helper="Promotion đang áp dụng" tone="emerald" icon={<CheckIcon className="h-5 w-5" />} />
+        <AdminMetricCard label="Đã lên lịch" value={scheduledPromotions} helper="Promotion chờ kích hoạt" tone="violet" icon={<CalendarIcon className="h-5 w-5" />} />
+        <AdminMetricCard label="Đã hết hạn" value={expiredPromotions} helper="Promotion cần rà soát lại" tone="amber" icon={<ClockIcon className="h-5 w-5" />} />
+      </div>
+
+      {successMessage ? <AdminAlert type="success">{successMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert type="error">{errorMessage}</AdminAlert> : null}
+
+      <AdminCard title="Bộ lọc chương trình" description="Tìm theo tên, slug, trạng thái, loại hoặc giá trị giảm giá.">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+          <div>
+            <AdminFilterLabel>Tìm kiếm</AdminFilterLabel>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Tìm theo tên, slug, trạng thái, loại, discount..."
+              className={adminInputClassName}
+            />
+          </div>
+          <div className="flex items-end">
+            <AdminButton variant="light" className="w-full" onClick={() => setSearchTerm("")}>Xóa bộ lọc</AdminButton>
+          </div>
         </div>
-      )}
+      </AdminCard>
 
-      {errorMessage && (
-        <div className="rounded-xl bg-red-100 p-4 text-red-600 shadow">
-          {errorMessage}
-        </div>
-      )}
-
-      {showForm && (
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-bold text-slate-800">
-            {editingPromotion ? "Cập nhật chương trình" : "Tạo chương trình mới"}
-          </h2>
-
+      {showForm ? (
+        <AdminCard title={editingPromotion ? "Cập nhật chương trình" : "Tạo chương trình mới"} description="Form promotion hiện tại được bọc trong card mới để đồng bộ toàn bộ admin.">
           <AdminPromotionForm
             initialData={editingPromotion}
             onSubmit={handleSubmitForm}
             submitting={submitting}
-            onCancel={handleCancelForm}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingPromotion(null);
+            }}
           />
-        </div>
-      )}
+        </AdminCard>
+      ) : null}
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow">
+      <AdminCard title="Danh sách chương trình khuyến mãi" description={`Hiển thị ${filteredPromotions.length} kết quả phù hợp.`}>
         {loading ? (
-          <div className="p-6 text-slate-500">Đang tải danh sách promotion...</div>
+          <div className="text-sm text-slate-500">Đang tải danh sách promotion...</div>
         ) : filteredPromotions.length === 0 ? (
-          <div className="p-6 text-slate-500">
-            {searchTerm ? "Không tìm thấy promotion phù hợp." : "Chưa có promotion nào."}
-          </div>
+          <div className="text-sm text-slate-500">{searchTerm ? "Không tìm thấy promotion phù hợp." : "Chưa có promotion nào."}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">Tên</th>
-                  <th className="px-4 py-3">Loại</th>
-                  <th className="px-4 py-3">Giảm giá</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Thời gian</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3">Targets</th>
-                  <th className="px-4 py-3">Hành động</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredPromotions.map((promotion) => (
-                  <tr key={promotion.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3">{promotion.id}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800">{promotion.name}</p>
-                      <p className="text-xs text-slate-500">{promotion.slug}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>{promotion.promotionType}</div>
-                      <div className="text-xs text-slate-500">{promotion.discountType}</div>
-                    </td>
-                    <td className="px-4 py-3">{promotion.discountValue}</td>
-                    <td className="px-4 py-3">{promotion.priority}</td>
-                    <td className="px-4 py-3">
-                      <div>{promotion.startTime?.replace("T", " ")}</div>
-                      <div>{promotion.endTime?.replace("T", " ")}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          STATUS_BADGE[promotion.status] || "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {promotion.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{promotion.targets?.length || 0} target</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => handleEditClick(promotion.id)}
-                          className="rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-yellow-500"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          onClick={() => handleDelete(promotion.id)}
-                          className="rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    </td>
+          <AdminTableShell>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-slate-500">
+                  <tr>
+                    <th className="px-5 py-4 font-semibold">ID</th>
+                    <th className="px-5 py-4 font-semibold">Tên</th>
+                    <th className="px-5 py-4 font-semibold">Loại</th>
+                    <th className="px-5 py-4 font-semibold">Giảm giá</th>
+                    <th className="px-5 py-4 font-semibold">Priority</th>
+                    <th className="px-5 py-4 font-semibold">Thời gian</th>
+                    <th className="px-5 py-4 font-semibold">Trạng thái</th>
+                    <th className="px-5 py-4 font-semibold">Targets</th>
+                    <th className="px-5 py-4 font-semibold">Hành động</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200/80 bg-white">
+                  {filteredPromotions.map((promotion) => (
+                    <tr key={promotion.id} className="hover:bg-slate-50/70">
+                      <td className="px-5 py-4 text-slate-500">#{promotion.id}</td>
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-slate-900">{promotion.name}</p>
+                        <p className="text-xs text-slate-400">{promotion.slug}</p>
+                      </td>
+                      <td className="px-5 py-4 text-slate-700">
+                        <div>{promotion.promotionType}</div>
+                        <div className="text-xs text-slate-400">{promotion.discountType}</div>
+                      </td>
+                      <td className="px-5 py-4 text-slate-700">{promotion.discountValue}</td>
+                      <td className="px-5 py-4 text-slate-500">{promotion.priority}</td>
+                      <td className="px-5 py-4 text-slate-500">
+                        <div>{promotion.startTime?.replace("T", " ") || "-"}</div>
+                        <div>{promotion.endTime?.replace("T", " ") || "-"}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={statusPillClassName(toneByStatus(promotion.status))}>{promotion.status}</span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-500">{promotion.targets?.length || 0} target</td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          <AdminButton variant="warning" className="px-4 py-2 text-xs" onClick={() => handleEditClick(promotion.id)}>Sửa</AdminButton>
+                          <AdminButton variant="danger" className="px-4 py-2 text-xs" onClick={() => handleDelete(promotion.id)}>Xóa</AdminButton>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </AdminTableShell>
         )}
-      </div>
+      </AdminCard>
     </div>
   );
 };
+
+function iconProps(className) {
+  return { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", className };
+}
+function SparklesIcon({ className = "h-5 w-5" }) {
+  return <svg {...iconProps(className)}><path d="m12 3 1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Zm7 11 1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1 1-2.6ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z" strokeLinejoin="round" /></svg>;
+}
+function CheckIcon({ className = "h-5 w-5" }) {
+  return <svg {...iconProps(className)}><path d="m5 12 4 4L19 6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+function CalendarIcon({ className = "h-5 w-5" }) {
+  return <svg {...iconProps(className)}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+function ClockIcon({ className = "h-5 w-5" }) {
+  return <svg {...iconProps(className)}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
 
 export default ManagePromotionsPage;
