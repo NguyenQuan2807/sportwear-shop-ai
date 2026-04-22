@@ -24,9 +24,9 @@ export const resetPasswordApi = (data) => {
   return axiosClient.post("/api/auth/reset-password", data);
 };
 
-export const refreshTokenApi = (refreshToken) => {
-  return axiosClient.post("/api/auth/refresh", { refreshToken });
-};
+// export const refreshTokenApi = (refreshToken) => {
+//   return axiosClient.post("/api/auth/refresh", { refreshToken });
+// };
 
 export const getCurrentUserApi = () => {
   return axiosClient.get("/api/auth/me");

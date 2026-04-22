@@ -5,10 +5,10 @@ export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
 
 export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 
-export const setAccessToken = (token) => {
-  if (!token) return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
-};
+// export const setAccessToken = (token) => {
+//   if (!token) return;
+//   localStorage.setItem(ACCESS_TOKEN_KEY, token);
+// };
 
 export const saveAuthSession = (payload = {}) => {
   const accessToken = payload.accessToken || payload.token;
