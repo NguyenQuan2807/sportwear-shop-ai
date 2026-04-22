@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import ProductReviewsSection from "../../components/review/ProductReviewsSection";
 import { addToCartApi } from "../../services/cartService";
-import { getProductDetailApi } from "../../services/productService";
 import ProductImageGallery from "../../components/product/ProductImageGallery";
-import ProductVariantSelector from "../../components/product/ProductVariantSelector";
 import RelatedProductsSection from "../../components/product/RelatedProductsSection";
-import { formatCurrency } from "../../utils/formatCurrency";
+import ProductVariantSelector from "../../components/product/ProductVariantSelector";
 import { useAuth } from "../../hooks/useAuth";
-import useWishlist from "../../hooks/useWishlist";
+import { getProductDetailApi } from "../../services/productService";
 import { dispatchCartUpdated } from "../../utils/cartEvents";
-
+import { formatCurrency } from "../../utils/formatCurrency";
+import useWishlist from "../../hooks/useWishlist";
 
 const genderLabelMap = {
   MALE: "Men's",
@@ -29,8 +29,12 @@ const AccordionItem = ({ title, children, defaultOpen = false }) => {
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between gap-4 text-left"
       >
-        <span className="text-[28px] font-medium tracking-tight text-black">{title}</span>
-        <span className={`text-xl transition ${open ? "rotate-180" : ""}`}>⌄</span>
+        <span className="text-[28px] font-medium tracking-tight text-black">
+          {title}
+        </span>
+        <span className={`text-xl transition ${open ? "rotate-180" : ""}`}>
+          ⌄
+        </span>
       </button>
       {open ? <div className="pt-4 text-base leading-8 text-black/72">{children}</div> : null}
     </div>
@@ -65,7 +69,8 @@ const ProductDetailPage = () => {
 
         if (data?.variants?.length > 0) {
           const defaultVariant =
-            data.variants.find((item) => Number(item.stockQuantity || 0) > 0) || data.variants[0];
+            data.variants.find((item) => Number(item.stockQuantity || 0) > 0) ||
+            data.variants[0];
           setSelectedVariant(defaultVariant);
         } else {
           setSelectedVariant(null);
@@ -93,7 +98,9 @@ const ProductDetailPage = () => {
     const currentColor = normalizeText(selectedVariant?.color);
 
     if (!currentColor) {
-      return [...product.images].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      return [...product.images].sort(
+        (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+      );
     }
 
     const exactColorImages = product.images.filter(
@@ -101,10 +108,14 @@ const ProductDetailPage = () => {
     );
 
     if (exactColorImages.length > 0) {
-      return [...exactColorImages].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      return [...exactColorImages].sort(
+        (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+      );
     }
 
-    return [...product.images].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return [...product.images].sort(
+      (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+    );
   }, [product?.images, selectedVariant?.color]);
 
   useEffect(() => {
@@ -113,10 +124,13 @@ const ProductDetailPage = () => {
       return;
     }
 
-    const stillExists = filteredImages.some((image) => image.imageUrl === selectedImage);
+    const stillExists = filteredImages.some(
+      (image) => image.imageUrl === selectedImage
+    );
     if (stillExists) return;
 
-    const thumbnail = filteredImages.find((image) => image.isThumbnail) || filteredImages[0];
+    const thumbnail =
+      filteredImages.find((image) => image.isThumbnail) || filteredImages[0];
     setSelectedImage(thumbnail?.imageUrl || "");
   }, [filteredImages, product?.thumbnailUrl, selectedImage]);
 
@@ -132,9 +146,10 @@ const ProductDetailPage = () => {
     );
 
     return uniqueColors.map((color) => {
-      const matchedImage = product.images?.find(
-        (image) => normalizeText(image.color) === normalizeText(color)
-      ) || product.images?.[0];
+      const matchedImage =
+        product.images?.find(
+          (image) => normalizeText(image.color) === normalizeText(color)
+        ) || product.images?.[0];
 
       return {
         color,
@@ -143,7 +158,10 @@ const ProductDetailPage = () => {
     });
   }, [product?.variants, product?.images, product?.thumbnailUrl]);
 
-  const maxQuantity = useMemo(() => Math.max(1, Number(selectedVariant?.stockQuantity || 1)), [selectedVariant]);
+  const maxQuantity = useMemo(
+    () => Math.max(1, Number(selectedVariant?.stockQuantity || 1)),
+    [selectedVariant]
+  );
 
   const currentPriceView = useMemo(() => {
     if (!selectedVariant) {
@@ -161,8 +179,12 @@ const ProductDetailPage = () => {
 
     return {
       hasPromotion,
-      originalPrice: hasPromotion ? selectedVariant.originalPrice : selectedVariant.price,
-      finalPrice: hasPromotion ? selectedVariant.finalPrice : selectedVariant.price,
+      originalPrice: hasPromotion
+        ? selectedVariant.originalPrice
+        : selectedVariant.price,
+      finalPrice: hasPromotion
+        ? selectedVariant.finalPrice
+        : selectedVariant.price,
       discountPercent: selectedVariant.discountPercent || 0,
       discountAmount: selectedVariant.discountAmount || 0,
       flashSale: Boolean(selectedVariant.flashSale),
@@ -170,12 +192,13 @@ const ProductDetailPage = () => {
   }, [selectedVariant]);
 
   const detailBullets = useMemo(
-    () => [
-      selectedVariant?.color ? `Màu đang chọn: ${selectedVariant.color}` : null,
-      product?.material ? `Chất liệu: ${product.material}` : null,
-      product?.sportName ? `Môn thể thao: ${product.sportName}` : null,
-    ].filter(Boolean),
-    [product?.material, product?.sportName, selectedVariant?.color, selectedVariant?.sku]
+    () =>
+      [
+        selectedVariant?.color ? `Màu đang chọn: ${selectedVariant.color}` : null,
+        product?.material ? `Chất liệu: ${product.material}` : null,
+        product?.sportName ? `Môn thể thao: ${product.sportName}` : null,
+      ].filter(Boolean),
+    [product?.material, product?.sportName, selectedVariant?.color]
   );
 
   const handleAddToCart = async () => {
@@ -191,6 +214,11 @@ const ProductDetailPage = () => {
 
     if (Number(selectedVariant.stockQuantity || 0) <= 0) {
       setErrorMessage("Biến thể này hiện đã hết hàng");
+      return;
+    }
+
+    if (quantity > maxQuantity) {
+      setErrorMessage("Số lượng vượt quá tồn kho hiện tại");
       return;
     }
 
@@ -232,9 +260,16 @@ const ProductDetailPage = () => {
     return (
       <div className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="rounded-2xl bg-white px-8 py-10 text-center">
-          <h2 className="text-2xl font-semibold text-black">Không tìm thấy sản phẩm</h2>
-          <p className="mt-3 text-sm text-black/60">Sản phẩm này có thể đã bị xóa hoặc không còn khả dụng.</p>
-          <Link to="/products" className="mt-6 inline-flex rounded-full bg-black px-5 py-3 text-sm font-semibold text-white">
+          <h2 className="text-2xl font-semibold text-black">
+            Không tìm thấy sản phẩm
+          </h2>
+          <p className="mt-3 text-sm text-black/60">
+            Sản phẩm này có thể đã bị xóa hoặc không còn khả dụng.
+          </p>
+          <Link
+            to="/products"
+            className="mt-6 inline-flex rounded-full bg-black px-5 py-3 text-sm font-semibold text-white"
+          >
             Quay lại danh sách sản phẩm
           </Link>
         </div>
@@ -251,7 +286,9 @@ const ProductDetailPage = () => {
               images={filteredImages}
               selectedImage={selectedImage}
               onSelectImage={setSelectedImage}
-              badgeLabel={currentPriceView.hasPromotion ? "Highly Rated" : "Best Seller"}
+              badgeLabel={
+                currentPriceView.hasPromotion ? "Highly Rated" : "Best Seller"
+              }
             />
           </div>
 
@@ -261,7 +298,9 @@ const ProductDetailPage = () => {
                 {product.name}
               </h1>
               <p className="mt-2 text-[28px] leading-9 text-black/65">
-                {`${genderLabelMap[product.gender] || ""} ${product.sportName || ""}`.trim()}
+                {`${genderLabelMap[product.gender] || ""} ${
+                  product.sportName || ""
+                }`.trim()}
               </p>
 
               <div className="mt-5 space-y-2">
@@ -292,27 +331,59 @@ const ProductDetailPage = () => {
               colorOptions={colorOptions}
             />
 
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={cartLoading || Number(selectedVariant?.stockQuantity || 0) === 0}
-                className="inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-5 text-lg font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {cartLoading
-                  ? "Đang thêm vào giỏ..."
-                  : Number(selectedVariant?.stockQuantity || 0) === 0
-                  ? "Hết hàng"
-                  : "Thêm vào giỏ hàng"}
-              </button>
+            <div className="space-y-4 rounded-[28px] border border-black/8 bg-[#fafafa] p-5">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-[0.18em] text-black/45">
+                  Số lượng
+                </p>
+                <div className="mt-3 inline-flex items-center overflow-hidden rounded-full border border-black/12">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    className="px-4 py-3 text-lg font-semibold text-black transition hover:bg-black/5"
+                  >
+                    −
+                  </button>
+                  <span className="min-w-[56px] px-4 text-center text-base font-semibold text-black">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantity((prev) => Math.min(maxQuantity, prev + 1))
+                    }
+                    className="px-4 py-3 text-lg font-semibold text-black transition hover:bg-black/5"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="mt-2 text-sm text-black/45">
+                  Tồn kho hiện tại: {selectedVariant?.stockQuantity || 0}
+                </p>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => toggleWishlist(product)}
-                className="inline-flex w-full items-center justify-center rounded-full border border-black/20 bg-transparent px-6 py-5 text-lg font-semibold text-black transition hover:border-black"
-              >
-                {isWishlisted ? "Đã yêu thích" : "Yêu thích ♡"}
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={cartLoading || Number(selectedVariant?.stockQuantity || 0) === 0}
+                  className="inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-5 text-lg font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {cartLoading
+                    ? "Đang thêm vào giỏ..."
+                    : Number(selectedVariant?.stockQuantity || 0) === 0
+                    ? "Hết hàng"
+                    : "Thêm vào giỏ hàng"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggleWishlist(product)}
+                  className="inline-flex w-full items-center justify-center rounded-full border border-black/20 bg-transparent px-6 py-5 text-lg font-semibold text-black transition hover:border-black"
+                >
+                  {isWishlisted ? "Đã yêu thích" : "Yêu thích ♡"}
+                </button>
+              </div>
             </div>
 
             {successMessage ? (
@@ -345,10 +416,8 @@ const ProductDetailPage = () => {
                 </div>
               </AccordionItem>
 
-              <AccordionItem title="Reviews">
-                <p>
-                  .......
-                </p>
+              <AccordionItem title="Đánh giá sản phẩm" defaultOpen>
+                <ProductReviewsSection productId={product.id} />
               </AccordionItem>
             </div>
           </div>
@@ -370,7 +439,10 @@ const ProductDetailSkeleton = () => (
       <div className="grid gap-4 lg:grid-cols-[64px_minmax(0,1fr)]">
         <div className="flex gap-3 lg:flex-col">
           {Array.from({ length: 7 }).map((_, index) => (
-            <div key={index} className="h-16 w-16 animate-pulse rounded-lg bg-black/6 lg:h-[74px] lg:w-[74px]" />
+            <div
+              key={index}
+              className="h-16 w-16 animate-pulse rounded-lg bg-black/6 lg:h-[74px] lg:w-[74px]"
+            />
           ))}
         </div>
         <div className="h-[420px] animate-pulse rounded-2xl bg-black/6 sm:h-[560px] xl:h-[680px]" />
@@ -382,12 +454,18 @@ const ProductDetailSkeleton = () => (
         <div className="h-9 w-1/3 animate-pulse rounded bg-black/6" />
         <div className="grid grid-cols-5 gap-3">
           {Array.from({ length: 10 }).map((_, index) => (
-            <div key={index} className="h-16 animate-pulse rounded-md bg-black/6" />
+            <div
+              key={index}
+              className="h-16 animate-pulse rounded-md bg-black/6"
+            />
           ))}
         </div>
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 7 }).map((_, index) => (
-            <div key={index} className="h-[62px] animate-pulse rounded-md bg-black/6" />
+            <div
+              key={index}
+              className="h-[62px] animate-pulse rounded-md bg-black/6"
+            />
           ))}
         </div>
         <div className="h-16 w-full animate-pulse rounded-full bg-black/6" />

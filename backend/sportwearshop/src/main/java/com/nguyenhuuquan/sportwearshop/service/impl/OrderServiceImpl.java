@@ -6,15 +6,16 @@ import com.nguyenhuuquan.sportwearshop.common.exception.BadRequestException;
 import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.common.exception.UnauthorizedException;
 import com.nguyenhuuquan.sportwearshop.dto.order.*;
+import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
 import com.nguyenhuuquan.sportwearshop.entity.*;
 import com.nguyenhuuquan.sportwearshop.repository.*;
 import com.nguyenhuuquan.sportwearshop.service.OrderService;
+import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
-import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +29,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentRepository paymentRepository;
     private final ProductVariantRepository productVariantRepository;
     private final PromotionPricingService promotionPricingService;
+    private final ReviewRepository reviewRepository;
 
     public OrderServiceImpl(UserRepository userRepository,
                             CartRepository cartRepository,
@@ -36,7 +38,8 @@ public class OrderServiceImpl implements OrderService {
                             OrderItemRepository orderItemRepository,
                             PaymentRepository paymentRepository,
                             ProductVariantRepository productVariantRepository,
-                            PromotionPricingService promotionPricingService) {
+                            PromotionPricingService promotionPricingService,
+                            ReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
@@ -45,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
         this.paymentRepository = paymentRepository;
         this.productVariantRepository = productVariantRepository;
         this.promotionPricingService = promotionPricingService;
+        this.reviewRepository = reviewRepository;
     }
 
     @Override
@@ -235,7 +239,7 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderResponse mapToOrderResponse(Order order) {
         List<OrderItem> orderItems = orderItemRepository.findByOrder(order);
-        List<OrderItemResponse> itemResponses = mapOrderItems(orderItems);
+        List<OrderItemResponse> itemResponses = mapOrderItems(order, orderItems);
 
         OrderResponse response = new OrderResponse();
         response.setId(order.getId());
@@ -252,7 +256,7 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderDetailResponse mapToOrderDetailResponse(Order order) {
         List<OrderItem> orderItems = orderItemRepository.findByOrder(order);
-        List<OrderItemResponse> itemResponses = mapOrderItems(orderItems);
+        List<OrderItemResponse> itemResponses = mapOrderItems(order, orderItems);
 
         OrderDetailResponse response = new OrderDetailResponse();
         response.setId(order.getId());
@@ -269,9 +273,12 @@ public class OrderServiceImpl implements OrderService {
         return response;
     }
 
-    private List<OrderItemResponse> mapOrderItems(List<OrderItem> orderItems) {
+    private List<OrderItemResponse> mapOrderItems(Order order, List<OrderItem> orderItems) {
+        boolean orderCompleted = order.getStatus() == OrderStatus.COMPLETED;
+
         return orderItems.stream().map(item -> {
             ProductVariant variant = item.getProductVariant();
+            Optional<Review> existingReview = reviewRepository.findByOrderItem(item);
 
             OrderItemResponse response = new OrderItemResponse();
             response.setId(item.getId());
@@ -288,6 +295,11 @@ public class OrderServiceImpl implements OrderService {
             response.setDiscountAmount(item.getDiscountAmount());
             response.setFinalPrice(item.getFinalPrice());
             response.setPromotionName(item.getPromotionName());
+
+            response.setReviewed(existingReview.isPresent());
+            response.setReviewId(existingReview.map(Review::getId).orElse(null));
+            response.setCanReview(orderCompleted && existingReview.isEmpty());
+
             return response;
         }).collect(Collectors.toList());
     }

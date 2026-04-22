@@ -21,4 +21,8 @@ public class OrderItemResponse {
     private Integer quantity;
     private Double totalPrice;
     private String promotionName;
+
+    private Boolean canReview;
+    private Boolean reviewed;
+    private Long reviewId;
 }
