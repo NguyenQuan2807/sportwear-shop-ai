@@ -4,11 +4,14 @@ import com.nguyenhuuquan.sportwearshop.common.enums.Gender;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class ProductSearchRequest {
     private String keyword;
     private Long categoryId;
+    private List<Long> categoryIds;
     private Long brandId;
     private Long sportId;
     private Gender gender;
