@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getCurrentUserApi } from "../../services/authService";
 import { getCartApi } from "../../services/cartService";
 import { createOrderApi } from "../../services/orderService";
+import { initQrCheckoutSessionApi } from "../../services/bankQrPaymentService";
 import { createMyAddressApi, getMyAddressesApi } from "../../services/profileService";
 
 const DEFAULT_FORM = {
@@ -28,16 +29,9 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const splitFullName = (fullName = "") => {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return { firstName: "", lastName: "" };
-  }
-  if (parts.length === 1) {
-    return { firstName: parts[0], lastName: "" };
-  }
-  return {
-    firstName: parts[parts.length - 1],
-    lastName: parts.slice(0, -1).join(" "),
-  };
+  if (parts.length === 0) return { firstName: "", lastName: "" };
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  return { firstName: parts[parts.length - 1], lastName: parts.slice(0, -1).join(" ") };
 };
 
 const buildShippingAddress = (formData) =>
@@ -47,7 +41,6 @@ const buildShippingAddress = (formData) =>
 
 export const useCheckout = () => {
   const navigate = useNavigate();
-
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +50,9 @@ export const useCheckout = () => {
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrSession, setQrSession] = useState(null);
+  const [pendingAddressPayload, setPendingAddressPayload] = useState(null);
 
   const fillAddressIntoForm = (address, keepSaveFlag = false) => {
     const { firstName, lastName } = splitFullName(address.fullName || "");
@@ -77,45 +73,40 @@ export const useCheckout = () => {
     }));
   };
 
-  const fetchInitialData = async () => {
-    try {
-      setLoading(true);
-      setErrorMessage("");
-
-      const [cartResponse, currentUserResponse, addressesResponse] = await Promise.all([
-        getCartApi(),
-        getCurrentUserApi(),
-        getMyAddressesApi(),
-      ]);
-
-      setCart(cartResponse.data);
-
-      const currentUser = currentUserResponse.data || {};
-      const savedAddresses = Array.isArray(addressesResponse.data) ? addressesResponse.data : [];
-      setAddresses(savedAddresses);
-
-      const { firstName, lastName } = splitFullName(currentUser.fullName || "");
-      setFormData((prev) => ({
-        ...prev,
-        email: currentUser.email || prev.email,
-        firstName: firstName || prev.firstName,
-        lastName: lastName || prev.lastName,
-        receiverPhone: currentUser.phone || prev.receiverPhone,
-      }));
-
-      const defaultAddress = savedAddresses.find((item) => item.isDefault) || null;
-      if (defaultAddress) {
-        fillAddressIntoForm(defaultAddress);
-      }
-    } catch (error) {
-      const backendMessage = error?.response?.data?.message || "Không thể tải dữ liệu thanh toán";
-      setErrorMessage(backendMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        setErrorMessage("");
+        const [cartResponse, currentUserResponse, addressesResponse] = await Promise.all([
+          getCartApi(),
+          getCurrentUserApi(),
+          getMyAddressesApi(),
+        ]);
+
+        setCart(cartResponse.data);
+        const currentUser = currentUserResponse.data || {};
+        const savedAddresses = Array.isArray(addressesResponse.data) ? addressesResponse.data : [];
+        setAddresses(savedAddresses);
+
+        const { firstName, lastName } = splitFullName(currentUser.fullName || "");
+        setFormData((prev) => ({
+          ...prev,
+          email: currentUser.email || prev.email,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
+          receiverPhone: currentUser.phone || prev.receiverPhone,
+        }));
+
+        const defaultAddress = savedAddresses.find((item) => item.isDefault) || null;
+        if (defaultAddress) fillAddressIntoForm(defaultAddress);
+      } catch (error) {
+        setErrorMessage(error?.response?.data?.message || "Không thể tải dữ liệu thanh toán");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchInitialData();
   }, []);
 
@@ -124,110 +115,35 @@ export const useCheckout = () => {
   const discountAmount = cart?.discountAmount || 0;
   const totalAmount = cart?.totalAmount || 0;
   const shippingFee = Math.max(totalAmount - (subTotalAmount - discountAmount), 0);
-
-  const totalQuantity = useMemo(
-    () => items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-    [items]
-  );
-
-  const receiverName = `${formData.firstName} ${formData.lastName}`.trim();
+  const totalQuantity = useMemo(() => items.reduce((sum, item) => sum + (item.quantity || 0), 0), [items]);
 
   const validateForm = () => {
-    if (!EMAIL_REGEX.test(formData.email.trim())) {
-      return "Email không hợp lệ";
-    }
-    if (!formData.firstName.trim()) {
-      return "Vui lòng nhập tên";
-    }
-    if (!formData.lastName.trim()) {
-      return "Vui lòng nhập họ";
-    }
-    if (!PHONE_REGEX.test(formData.receiverPhone.trim())) {
-      return "Số điện thoại không hợp lệ";
-    }
-    if (!formData.addressLine.trim()) {
-      return "Vui lòng nhập địa chỉ cụ thể";
-    }
-    if (!formData.provinceCode) {
-      return "Vui lòng chọn tỉnh/thành phố";
-    }
-    if (!formData.districtCode) {
-      return "Vui lòng chọn quận/huyện";
-    }
-    if (!formData.wardCode) {
-      return "Vui lòng chọn phường/xã";
-    }
-    if (!cart?.items || cart.items.length === 0) {
-      return "Giỏ hàng đang trống";
-    }
-    if (formData.paymentMethod !== "COD") {
-      return "Momo và VNPay đã có UI chọn phương thức, nhưng backend thanh toán online chưa được tích hợp xong. Hiện tại bạn vui lòng dùng COD để tạo đơn thật.";
-    }
+    if (!EMAIL_REGEX.test(formData.email.trim())) return "Email không hợp lệ";
+    if (!formData.firstName.trim()) return "Vui lòng nhập tên";
+    if (!formData.lastName.trim()) return "Vui lòng nhập họ";
+    if (!PHONE_REGEX.test(formData.receiverPhone.trim())) return "Số điện thoại không hợp lệ";
+    if (!formData.addressLine.trim()) return "Vui lòng nhập địa chỉ cụ thể";
+    if (!formData.provinceCode) return "Vui lòng chọn tỉnh/thành phố";
+    if (!formData.districtCode) return "Vui lòng chọn quận/huyện";
+    if (!formData.wardCode) return "Vui lòng chọn phường/xã";
+    if (!items.length) return "Giỏ hàng đang trống";
     return "";
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (["addressLine", "receiverPhone", "firstName", "lastName"].includes(name)) {
-      setSelectedAddressId(null);
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (["addressLine", "receiverPhone", "firstName", "lastName"].includes(name)) setSelectedAddressId(null);
   };
 
-  const handleSelectPayment = (method) => {
-    setFormData((prev) => ({
-      ...prev,
-      paymentMethod: method,
-    }));
-  };
-
+  const handleSelectPayment = (method) => setFormData((prev) => ({ ...prev, paymentMethod: method }));
   const handleOpenAddressModal = () => setIsAddressModalOpen(true);
   const handleCloseAddressModal = () => setIsAddressModalOpen(false);
-
-  const handleChooseAddress = (address) => {
-    fillAddressIntoForm(address);
-    setIsAddressModalOpen(false);
-  };
-
-  const handleProvinceChange = (provinceCode) => {
-    const province = addresses.length
-      ? null
-      : null;
-    setSelectedAddressId(null);
-    setFormData((prev) => ({
-      ...prev,
-      provinceCode,
-      provinceName: "",
-      districtCode: "",
-      districtName: "",
-      wardCode: "",
-      wardName: "",
-    }));
-  };
-
-  const handleDistrictChange = (districtCode) => {
-    setSelectedAddressId(null);
-    setFormData((prev) => ({
-      ...prev,
-      districtCode,
-      districtName: "",
-      wardCode: "",
-      wardName: "",
-    }));
-  };
-
-  const handleWardChange = (wardCode) => {
-    setSelectedAddressId(null);
-    setFormData((prev) => ({
-      ...prev,
-      wardCode,
-      wardName: "",
-    }));
-  };
+  const handleChooseAddress = (address) => { fillAddressIntoForm(address); setIsAddressModalOpen(false); };
+  const handleProvinceChange = (provinceCode) => setFormData((prev) => ({ ...prev, provinceCode, provinceName: "", districtCode: "", districtName: "", wardCode: "", wardName: "" }));
+  const handleDistrictChange = (districtCode) => setFormData((prev) => ({ ...prev, districtCode, districtName: "", wardCode: "", wardName: "" }));
+  const handleWardChange = (wardCode) => setFormData((prev) => ({ ...prev, wardCode, wardName: "" }));
+  const handleToggleSaveAddress = () => setFormData((prev) => ({ ...prev, saveNewAddress: !prev.saveNewAddress }));
 
   const syncLocationNames = ({ provinces, provinceCode, districtCode, wardCode }) => {
     const province = provinces.find((item) => item.code === provinceCode);
@@ -240,87 +156,99 @@ export const useCheckout = () => {
     };
   };
 
-  const handleToggleSaveAddress = () => {
-    setSelectedAddressId(null);
-    setFormData((prev) => ({
-      ...prev,
-      saveNewAddress: !prev.saveNewAddress,
-    }));
+  const saveAddressIfNeeded = async (normalizedForm, receiverNameValue) => {
+    if (!(normalizedForm.saveNewAddress && !selectedAddressId)) return;
+    const response = await createMyAddressApi({
+      fullName: receiverNameValue,
+      phoneNumber: normalizedForm.receiverPhone,
+      addressLine: normalizedForm.addressLine,
+      provinceCode: normalizedForm.provinceCode,
+      provinceName: normalizedForm.provinceName,
+      districtCode: normalizedForm.districtCode,
+      districtName: normalizedForm.districtName,
+      wardCode: normalizedForm.wardCode,
+      wardName: normalizedForm.wardName,
+      isDefault: false,
+    });
+    setAddresses((prev) => [response.data, ...prev]);
+  };
+
+  const handleQrModalSuccess = async (orderId) => {
+    try {
+      if (pendingAddressPayload) {
+        await saveAddressIfNeeded(pendingAddressPayload, pendingAddressPayload.receiverName);
+      }
+      setSuccessMessage("Thanh toán thành công, đơn hàng đã được tạo.");
+      setErrorMessage("");
+    } catch {
+      setSuccessMessage("Thanh toán thành công, nhưng lưu địa chỉ mới thất bại.");
+    } finally {
+      setPendingAddressPayload(null);
+      setIsQrModalOpen(false);
+      setQrSession(null);
+      setTimeout(() => navigate(`/orders/${orderId}`), 1200);
+    }
+  };
+
+  const handleQrModalFailure = (message) => {
+    setPendingAddressPayload(null);
+    setQrSession(null);
+    setIsQrModalOpen(false);
+    setErrorMessage(message || "Thanh toán thất bại.");
   };
 
   const handleSubmitOrder = async (event, locationTree) => {
     event.preventDefault();
-
-    const locationNames = syncLocationNames({
-      provinces: locationTree,
-      provinceCode: formData.provinceCode,
-      districtCode: formData.districtCode,
-      wardCode: formData.wardCode,
-    });
-
     const normalizedForm = {
       ...formData,
-      ...locationNames,
+      ...syncLocationNames({
+        provinces: locationTree,
+        provinceCode: formData.provinceCode,
+        districtCode: formData.districtCode,
+        wardCode: formData.wardCode,
+      }),
     };
-
+    const receiverName = `${normalizedForm.firstName} ${normalizedForm.lastName}`.trim();
     const validationMessage = validateForm();
-    if (validationMessage) {
-      setErrorMessage(validationMessage);
-      return;
-    }
+    if (validationMessage) return setErrorMessage(validationMessage);
 
     try {
       setSubmitting(true);
       setErrorMessage("");
       setSuccessMessage("");
 
-      await createOrderApi({
+      if (normalizedForm.paymentMethod === "COD") {
+        const response = await createOrderApi({
+          shippingAddress: buildShippingAddress(normalizedForm),
+          receiverName,
+          receiverPhone: normalizedForm.receiverPhone,
+          note: normalizedForm.note,
+          paymentMethod: normalizedForm.paymentMethod,
+        });
+        await saveAddressIfNeeded({ ...normalizedForm, receiverName }, receiverName);
+        setSuccessMessage("Đặt hàng thành công.");
+        setTimeout(() => navigate(`/orders/${response?.data?.id || ""}`), 1200);
+        return;
+      }
+
+      const response = await initQrCheckoutSessionApi({
         shippingAddress: buildShippingAddress(normalizedForm),
         receiverName,
         receiverPhone: normalizedForm.receiverPhone,
         note: normalizedForm.note,
-        paymentMethod: normalizedForm.paymentMethod,
       });
 
-      let finalSuccessMessage = "Đặt hàng thành công";
-
-      if (normalizedForm.saveNewAddress && !selectedAddressId) {
-        try {
-          const addressResponse = await createMyAddressApi({
-            fullName: receiverName,
-            phoneNumber: normalizedForm.receiverPhone,
-            addressLine: normalizedForm.addressLine,
-            provinceCode: normalizedForm.provinceCode,
-            provinceName: normalizedForm.provinceName,
-            districtCode: normalizedForm.districtCode,
-            districtName: normalizedForm.districtName,
-            wardCode: normalizedForm.wardCode,
-            wardName: normalizedForm.wardName,
-            isDefault: false,
-          });
-          setAddresses((prev) => [addressResponse.data, ...prev]);
-          finalSuccessMessage = "Đặt hàng thành công và đã lưu địa chỉ mới";
-        } catch (saveAddressError) {
-          console.error(saveAddressError);
-          finalSuccessMessage = "Đặt hàng thành công nhưng lưu địa chỉ mới thất bại";
-        }
-      }
-
-      setSuccessMessage(finalSuccessMessage);
-
-      setTimeout(() => {
-        navigate("/orders");
-      }, 1200);
+      setPendingAddressPayload({ ...normalizedForm, receiverName });
+      setQrSession(response.data);
+      setIsQrModalOpen(true);
     } catch (error) {
-      const backendMessage = error?.response?.data?.message || "Không thể tạo đơn hàng";
-      setErrorMessage(backendMessage);
+      setErrorMessage(error?.response?.data?.message || error?.message || "Không thể khởi tạo thanh toán QR");
     } finally {
       setSubmitting(false);
     }
   };
 
   return {
-    cart,
     items,
     loading,
     submitting,
@@ -330,6 +258,8 @@ export const useCheckout = () => {
     addresses,
     selectedAddressId,
     isAddressModalOpen,
+    isQrModalOpen,
+    qrSession,
     totalQuantity,
     subTotalAmount,
     discountAmount,
@@ -345,7 +275,7 @@ export const useCheckout = () => {
     handleWardChange,
     handleToggleSaveAddress,
     handleSubmitOrder,
-    setFormData,
-    syncLocationNames,
+    handleQrModalSuccess,
+    handleQrModalFailure,
   };
 };

@@ -5,6 +5,8 @@ import com.nguyenhuuquan.sportwearshop.common.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "orders")
@@ -30,7 +32,8 @@ public class Order extends BaseEntity {
     private OrderStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "payment_method", nullable = false, length = 20)
     private PaymentMethod paymentMethod;
 
     @Column(name = "shipping_address", columnDefinition = "TEXT", nullable = false)

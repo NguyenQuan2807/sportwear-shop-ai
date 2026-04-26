@@ -47,6 +47,18 @@ jwt:
 app:
   upload:
     dir: D:/NguyenHuuQuan_DATN/sportwear-shop-ai/backend/uploads
+
   auth:
     verification-code-expiration-minutes: 10
     reset-password-code-expiration-minutes: 10
+
+  payment:
+    bank-qr:
+      bank-name: Vietcombank
+      account-number: 0010000000355
+      account-holder: Nguyen Huu Quan
+      qr-expire-minutes: 1
+      payment-code-prefix: SW
+      sepay:
+        webhook-token: CHANGE_ME_SEPAY_WEBHOOK_TOKEN
+

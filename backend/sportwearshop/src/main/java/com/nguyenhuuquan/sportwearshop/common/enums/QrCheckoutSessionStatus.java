@@ -1,8 +1,8 @@
 package com.nguyenhuuquan.sportwearshop.common.enums;
 
-public enum PaymentStatus {
+public enum QrCheckoutSessionStatus {
     PENDING,
     PAID,
-    FAILED,
-    EXPIRED
+    EXPIRED,
+    FAILED
 }
