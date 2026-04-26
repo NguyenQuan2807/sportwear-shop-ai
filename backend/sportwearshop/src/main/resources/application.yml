@@ -62,3 +62,11 @@ app:
       sepay:
         webhook-token: CHANGE_ME_SEPAY_WEBHOOK_TOKEN
 
+  ai:
+    enabled: true
+    max-history: 6
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-2.0-flash-lite
+      url: https://generativelanguage.googleapis.com/v1beta/models
+
