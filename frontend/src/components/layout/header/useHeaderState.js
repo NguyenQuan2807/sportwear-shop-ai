@@ -5,6 +5,13 @@ import { productUrl, visibleNavItems as fallbackNavItems } from "./header.data";
 const SHOW_TOP_THRESHOLD = 8;
 const HIDE_TOP_THRESHOLD = 42;
 
+const getSearchKeywordFromLocation = (location) => {
+  if (location.pathname !== "/products") return "";
+
+  const params = new URLSearchParams(location.search);
+  return params.get("keyword") || params.get("q") || params.get("search") || "";
+};
+
 const useHeaderState = (navigationItems = fallbackNavItems) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -13,7 +20,7 @@ const useHeaderState = (navigationItems = fallbackNavItems) => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => getSearchKeywordFromLocation(location));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
@@ -28,6 +35,10 @@ const useHeaderState = (navigationItems = fallbackNavItems) => {
     setActiveMenu(null);
     setUserMenuOpen(false);
     setUtilityMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    setQuery(getSearchKeywordFromLocation(location));
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -93,22 +104,40 @@ const useHeaderState = (navigationItems = fallbackNavItems) => {
     [activeMenu, navigationItems]
   );
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const keyword = query.trim();
+  const navigateWithKeyword = (value) => {
+    const keyword = String(value || "").trim();
+    const shouldPreserveCurrentFilters = location.pathname === "/products";
+    const params = shouldPreserveCurrentFilters
+      ? new URLSearchParams(location.search)
+      : new URLSearchParams();
 
-    if (!keyword) {
-      navigate("/products");
-      return;
+    params.delete("page");
+    params.delete("q");
+    params.delete("search");
+
+    if (keyword) {
+      params.set("keyword", keyword);
+    } else {
+      params.delete("keyword");
     }
 
-    navigate(productUrl({ keyword }));
+    const nextUrl = params.toString() ? `/products?${params.toString()}` : "/products";
+    navigate(nextUrl);
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    navigateWithKeyword(query);
     setMobileOpen(false);
     setMobileSearchOpen(false);
   };
 
   const handleQuickSearch = (value) => {
-    navigate(productUrl({ keyword: value }));
+    navigateWithKeyword(value);
     setMobileSearchOpen(false);
     setMobileOpen(false);
   };

@@ -47,7 +47,7 @@ export const useProductCatalog = () => {
 
   const filters = useMemo(
     () => ({
-      keyword: searchParams.get("keyword") || "",
+      keyword: searchParams.get("keyword") || searchParams.get("q") || searchParams.get("search") || "",
       categoryId: searchParams.get("categoryId") || "",
       categoryIds: searchParams.get("categoryIds") || "",
       categoryGroup: searchParams.get("categoryGroup") || "",
@@ -78,7 +78,7 @@ export const useProductCatalog = () => {
       sort: filters.sort,
     };
 
-    if (filters.keyword) params.keyword = filters.keyword;
+    if (filters.keyword?.trim()) params.keyword = filters.keyword.trim();
     if (filters.categoryId) params.categoryId = filters.categoryId;
     if (filters.categoryGroup && !filters.categoryId) params.categoryGroup = filters.categoryGroup;
     if (filters.categoryIds && !filters.categoryId && !filters.categoryGroup) params.categoryIds = filters.categoryIds;
@@ -104,7 +104,7 @@ export const useProductCatalog = () => {
 
     const params = {};
 
-    if (merged.keyword) params.keyword = merged.keyword;
+    if (merged.keyword?.trim()) params.keyword = merged.keyword.trim();
     if (merged.categoryId) params.categoryId = merged.categoryId;
     if (merged.categoryGroup && !merged.categoryId) params.categoryGroup = merged.categoryGroup;
     if (merged.categoryIds && !merged.categoryId && !merged.categoryGroup) params.categoryIds = merged.categoryIds;
@@ -153,6 +153,7 @@ export const useProductCatalog = () => {
     const legacySport = searchParams.get("sport");
     const legacySale = searchParams.get("sale");
     const legacyPromotion = searchParams.get("promotion");
+    const legacyKeyword = searchParams.get("q") || searchParams.get("search");
 
     let needUpdate = false;
     const nextParams = new URLSearchParams(searchParams);
@@ -205,6 +206,13 @@ export const useProductCatalog = () => {
       nextParams.set("promotionOnly", "true");
       nextParams.delete("sale");
       nextParams.delete("promotion");
+      needUpdate = true;
+    }
+
+    if (legacyKeyword && !searchParams.get("keyword")) {
+      nextParams.set("keyword", legacyKeyword.trim());
+      nextParams.delete("q");
+      nextParams.delete("search");
       needUpdate = true;
     }
 
@@ -285,7 +293,7 @@ export const useProductCatalog = () => {
 
     const chips = [];
 
-    if (filters.keyword) chips.push({ key: "keyword", label: `Tìm kiếm: ${filters.keyword}` });
+    if (filters.keyword?.trim()) chips.push({ key: "keyword", label: `Tìm kiếm: ${filters.keyword.trim()}` });
     if (category) chips.push({ key: "categoryId", label: `Danh mục: ${category.name}` });
     if (!category && groupLabel) chips.push({ key: "categoryGroup", label: `Danh mục: ${groupLabel}` });
     if (brand) chips.push({ key: "brandId", label: `Hãng: ${brand.name}` });
