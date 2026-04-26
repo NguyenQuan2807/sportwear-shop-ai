@@ -1,16 +1,29 @@
+const normalizeText = (value = "") =>
+  String(value)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
 const productUrl = (params = {}) => {
   const search = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      search.set(key, value);
+    if (value === undefined || value === null || value === "") return;
+
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        search.set(key, value.join(","));
+      }
+      return;
     }
+
+    search.set(key, value);
   });
 
   const queryString = search.toString();
   return queryString ? `/products?${queryString}` : "/products";
 };
-
 
 const quickSearches = [
   "Giày chạy bộ",
@@ -20,240 +33,390 @@ const quickSearches = [
   "Phụ kiện tập luyện",
 ];
 
-const navItems = [
-  {
-    label: "Nam",
-    href: productUrl({ gender: "MALE" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Danh mục nổi bật",
-        links: [
-          { label: "Áo nam", href: productUrl({ gender: "MALE", category: "Áo" }) },
-          { label: "Quần nam", href: productUrl({ gender: "MALE", category: "Quần" }) },
-          { label: "Giày nam", href: productUrl({ gender: "MALE", category: "Giày" }) },
-          { label: "Đồ tập gym nam", href: productUrl({ gender: "MALE", sport: "Gym" }) },
-        ],
-      },
-      {
-        title: "Mua theo môn",
-        links: [
-          { label: "Chạy bộ", href: productUrl({ gender: "MALE", sport: "Chạy bộ" }) },
-          { label: "Bóng đá", href: productUrl({ gender: "MALE", sport: "Bóng đá" }) },
-          { label: "Gym", href: productUrl({ gender: "MALE", sport: "Gym" }) },
-          { label: "Tennis", href: productUrl({ gender: "MALE", sport: "Tennis" }) },
-        ],
-      },
-      {
-        title: "Gợi ý nhanh",
-        links: [
-          { label: "Hàng mới về", href: productUrl({ gender: "MALE", sort: "newest" }) },
-          { label: "Bán chạy", href: productUrl({ gender: "MALE", sort: "popular" }) },
-          { label: "Đang giảm giá", href: productUrl({ gender: "MALE", sale: "true" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Men collection",
-      title: "Phong cách thể thao hiện đại",
-      description:
-        "Khám phá bộ sưu tập nam với thiết kế mạnh mẽ, thoải mái và phù hợp cho cả tập luyện lẫn thường ngày.",
-      ctaLabel: "Mua ngay",
-      ctaHref: productUrl({ gender: "MALE" }),
-    },
-  },
-  {
-    label: "Nữ",
-    href: productUrl({ gender: "FEMALE" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Danh mục nổi bật",
-        links: [
-          { label: "Áo nữ", href: productUrl({ gender: "FEMALE", category: "Áo" }) },
-          { label: "Quần nữ", href: productUrl({ gender: "FEMALE", category: "Quần" }) },
-          { label: "Giày nữ", href: productUrl({ gender: "FEMALE", category: "Giày" }) },
-          { label: "Đồ yoga nữ", href: productUrl({ gender: "FEMALE", sport: "Yoga" }) },
-        ],
-      },
-      {
-        title: "Mua theo môn",
-        links: [
-          { label: "Yoga", href: productUrl({ gender: "FEMALE", sport: "Yoga" }) },
-          { label: "Chạy bộ", href: productUrl({ gender: "FEMALE", sport: "Chạy bộ" }) },
-          { label: "Gym", href: productUrl({ gender: "FEMALE", sport: "Gym" }) },
-          { label: "Tennis", href: productUrl({ gender: "FEMALE", sport: "Tennis" }) },
-        ],
-      },
-      {
-        title: "Gợi ý nhanh",
-        links: [
-          { label: "Hàng mới về", href: productUrl({ gender: "FEMALE", sort: "newest" }) },
-          { label: "Bán chạy", href: productUrl({ gender: "FEMALE", sort: "popular" }) },
-          { label: "Đang giảm giá", href: productUrl({ gender: "FEMALE", sale: "true" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Women collection",
-      title: "Năng động, tinh tế, thoải mái",
-      description:
-        "Những thiết kế nữ tính nhưng vẫn tối ưu cho vận động, tập luyện và phong cách sống active mỗi ngày.",
-      ctaLabel: "Khám phá",
-      ctaHref: productUrl({ gender: "FEMALE" }),
-    },
-  },
-  {
-    label: "Giày",
-    href: productUrl({ category: "Giày" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Theo nhu cầu",
-        links: [
-          { label: "Giày chạy bộ", href: productUrl({ category: "Giày", sport: "Chạy bộ" }) },
-          { label: "Giày bóng đá", href: productUrl({ category: "Giày", sport: "Bóng đá" }) },
-          { label: "Giày gym", href: productUrl({ category: "Giày", sport: "Gym" }) },
-        ],
-      },
-      {
-        title: "Theo giới tính",
-        links: [
-          { label: "Giày nam", href: productUrl({ category: "Giày", gender: "MALE" }) },
-          { label: "Giày nữ", href: productUrl({ category: "Giày", gender: "FEMALE" }) },
-        ],
-      },
-      {
-        title: "Khác",
-        links: [
-          { label: "Mẫu mới", href: productUrl({ category: "Giày", sort: "newest" }) },
-          { label: "Giảm giá", href: productUrl({ category: "Giày", sale: "true" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Footwear",
-      title: "Bứt tốc trong từng bước chạy",
-      description:
-        "Những mẫu giày thể thao tối ưu độ bám, độ êm và cảm giác linh hoạt trong mọi chuyển động.",
-      ctaLabel: "Xem giày",
-      ctaHref: productUrl({ category: "Giày" }),
-    },
-  },
-  {
-    label: "Quần Áo",
-    href: productUrl({ category: "Quần áo" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Danh mục",
-        links: [
-          { label: "Áo thể thao", href: productUrl({ category: "Áo" }) },
-          { label: "Quần thể thao", href: productUrl({ category: "Quần" }) },
-          { label: "Set đồ tập", href: productUrl({ category: "Quần áo", sport: "Gym" }) },
-        ],
-      },
-      {
-        title: "Theo mục đích",
-        links: [
-          { label: "Chạy bộ", href: productUrl({ category: "Quần áo", sport: "Chạy bộ" }) },
-          { label: "Gym", href: productUrl({ category: "Quần áo", sport: "Gym" }) },
-          { label: "Yoga", href: productUrl({ category: "Quần áo", sport: "Yoga" }) },
-        ],
-      },
-      {
-        title: "Khác",
-        links: [
-          { label: "Mới nhất", href: productUrl({ category: "Quần áo", sort: "newest" }) },
-          { label: "Khuyến mãi", href: productUrl({ category: "Quần áo", sale: "true" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Apparel",
-      title: "Mặc đẹp khi vận động",
-      description:
-        "Tập trung vào form dáng, độ thoáng và chất liệu để bạn mặc đẹp cả trong phòng tập lẫn ngoài phố.",
-      ctaLabel: "Xem quần áo",
-      ctaHref: productUrl({ category: "Quần áo" }),
-    },
-  },
-  {
-    label: "Phụ kiện",
-    href: productUrl({ category: "Phụ kiện" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Phổ biến",
-        links: [
-          { label: "Túi & balo", href: productUrl({ category: "Phụ kiện", keyword: "balo" }) },
-          { label: "Mũ", href: productUrl({ category: "Phụ kiện", keyword: "mũ" }) },
-          { label: "Vớ", href: productUrl({ category: "Phụ kiện", keyword: "vớ" }) },
-        ],
-      },
-      {
-        title: "Tập luyện",
-        links: [
-          { label: "Phụ kiện gym", href: productUrl({ category: "Phụ kiện", sport: "Gym" }) },
-          { label: "Phụ kiện chạy bộ", href: productUrl({ category: "Phụ kiện", sport: "Chạy bộ" }) },
-        ],
-      },
-      {
-        title: "Khác",
-        links: [
-          { label: "Mới nhất", href: productUrl({ category: "Phụ kiện", sort: "newest" }) },
-          { label: "Giảm giá", href: productUrl({ category: "Phụ kiện", sale: "true" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Accessories",
-      title: "Hoàn thiện set đồ thể thao",
-      description:
-        "Phụ kiện giúp bạn tối ưu công năng, đồng thời tăng điểm nhấn cho phong cách năng động hằng ngày.",
-      ctaLabel: "Xem phụ kiện",
-      ctaHref: productUrl({ category: "Phụ kiện" }),
-    },
-  },
-  {
-    label: "Sale",
-    href: productUrl({ promotion: "true" }),
-    type: "mega",
-    columns: [
-      {
-        title: "Khuyến mãi",
-        links: [
-          { label: "Sale nam", href: productUrl({ sale: "true", gender: "MALE" }) },
-          { label: "Sale nữ", href: productUrl({ sale: "true", gender: "FEMALE" }) },
-        ],
-      },
-      {
-        title: "Sale theo nhóm",
-        links: [
-          { label: "Giày sale", href: productUrl({ sale: "true", category: "Giày" }) },
-          { label: "Quần áo sale", href: productUrl({ sale: "true", category: "Quần áo" }) },
-          { label: "Phụ kiện sale", href: productUrl({ sale: "true", category: "Phụ kiện" }) },
-        ],
-      },
-      {
-        title: "Khác",
-        links: [
-          { label: "Mức giảm sâu", href: productUrl({ sale: "true", sort: "discountDesc" }) },
-          { label: "Sản phẩm nổi bật", href: productUrl({ sale: "true", sort: "popular" }) },
-        ],
-      },
-    ],
-    feature: {
-      eyebrow: "Sale up to",
-      title: "Ưu đãi tốt cho nhiều dòng sản phẩm",
-      description:
-        "Tổng hợp các sản phẩm đang có giá tốt để bạn mua nhanh hơn mà vẫn đúng nhu cầu.",
-      ctaLabel: "Xem sale",
-      ctaHref: productUrl({ sale: "true" }),
-    },
-  },
+const isActiveItem = (item) => item?.isActive !== false;
+
+const getItemName = (item) => normalizeText(`${item?.name || ""} ${item?.slug || ""}`);
+
+const findCategory = (categories, keywords = []) =>
+  categories.find((item) => {
+    if (!isActiveItem(item)) return false;
+
+    const name = getItemName(item);
+    return keywords.some((keyword) => name.includes(normalizeText(keyword)));
+  });
+
+const findCategoryByExactOrKeyword = (categories, exactName, keywords = []) => {
+  const normalizedExact = normalizeText(exactName);
+
+  return (
+    categories.find((item) => isActiveItem(item) && normalizeText(item.name) === normalizedExact) ||
+    findCategory(categories, keywords)
+  );
+};
+
+const categoryHref = (categories, fallbackName, keywords, extraParams = {}) => {
+  const category = findCategoryByExactOrKeyword(categories, fallbackName, keywords);
+
+  if (category?.id) {
+    return productUrl({ ...extraParams, categoryId: category.id });
+  }
+
+  return productUrl({ ...extraParams, category: fallbackName });
+};
+
+const hasCategoryTerm = (category, terms = []) => {
+  const name = normalizeText(category?.name || "");
+  const slug = normalizeText(category?.slug || "");
+  const fullText = getItemName(category);
+
+  return terms.some((term) => {
+    const value = normalizeText(term);
+
+    return (
+      name === value ||
+      slug === value ||
+      name.startsWith(`${value} `) ||
+      slug.startsWith(`${value}-`) ||
+      slug.startsWith(`${value}_`) ||
+      fullText.includes(value)
+    );
+  });
+};
+
+const categoryGroupRules = {
+  shoes: (category) => hasCategoryTerm(category, ["giay", "shoe"]),
+  apparel: (category) => hasCategoryTerm(category, ["ao", "quan", "apparel", "clothing"]),
+  accessories: (category) =>
+    hasCategoryTerm(category, [
+      "phu kien",
+      "accessor",
+      "tui",
+      "balo",
+      "ba lo",
+      "mu",
+      "non",
+      "tat",
+      "vo",
+    ]),
+};
+
+const getCategoryGroupIds = (categories, group) =>
+  categories
+    .filter((item) => isActiveItem(item) && categoryGroupRules[group]?.(item))
+    .map((item) => item.id)
+    .filter(Boolean);
+
+const groupHref = (_categories, group, extraParams = {}) =>
+  productUrl({
+    ...extraParams,
+    categoryGroup: group,
+  });
+
+const sportHref = (sport, extraParams = {}) =>
+  productUrl({
+    ...extraParams,
+    ...(sport?.id ? { sportId: sport.id } : { sport: sport?.name }),
+  });
+
+const buildSportLinks = (sports, buildLabel, extraParams = {}) =>
+  sports
+    .filter(isActiveItem)
+    .map((sport) => ({
+      label: buildLabel(sport),
+      href: sportHref(sport, extraParams),
+    }));
+
+const featuredLinks = (extraParams = {}) => [
+  { label: "Hàng mới về", href: productUrl({ ...extraParams, sort: "newest" }) },
+  { label: "Bán chạy", href: productUrl({ ...extraParams, sort: "popular" }) },
+  { label: "Đang sale", href: productUrl({ ...extraParams, promotionOnly: "true" }) },
 ];
 
-const visibleNavItems = navItems;
+const discountCategoryLinks = (categories) => {
+  const activeCategories = categories.filter(isActiveItem);
 
-export { productUrl, quickSearches, navItems, visibleNavItems };
+  if (activeCategories.length === 0) {
+    return [
+      { label: "Giày sale", href: productUrl({ categoryGroup: "shoes", promotionOnly: "true" }) },
+      { label: "Quần áo sale", href: productUrl({ categoryGroup: "apparel", promotionOnly: "true" }) },
+      { label: "Phụ kiện sale", href: productUrl({ categoryGroup: "accessories", promotionOnly: "true" }) },
+    ];
+  }
+
+  return activeCategories.map((category) => ({
+    label: `${category.name} sale`,
+    href: productUrl({ categoryId: category.id, promotionOnly: "true" }),
+  }));
+};
+
+const isVisiblePromotion = (promotion) => {
+  if (promotion?.isActive === false) return false;
+
+  const status = String(promotion?.status || "").toUpperCase();
+  return status === "ACTIVE" || status === "SCHEDULED";
+};
+
+const promotionProgramLinks = (promotions) => {
+  const visiblePromotions = promotions.filter(isVisiblePromotion);
+
+  if (visiblePromotions.length === 0) {
+    return [{ label: "Tất cả sản phẩm sale", href: productUrl({ promotionOnly: "true" }) }];
+  }
+
+  return visiblePromotions.map((promotion) => ({
+    label: promotion.name,
+    href: productUrl({ promotionId: promotion.id }),
+  }));
+};
+
+const fallbackSports = [
+  { id: "", name: "Bóng đá" },
+  { id: "", name: "Bóng chuyền" },
+  { id: "", name: "Bóng rổ" },
+  { id: "", name: "Chạy bộ" },
+  { id: "", name: "Tennis" },
+  { id: "", name: "Cầu lông" },
+];
+
+const buildMegaNavItems = ({ categories = [], sports = [], promotions = [] } = {}) => {
+  const sportItems = sports.length > 0 ? sports : fallbackSports;
+
+  return [
+    {
+      label: "Nam",
+      href: productUrl({ gender: "MALE" }),
+      type: "mega",
+      columns: [
+        {
+          title: "Theo danh mục",
+          links: [
+            { label: "Áo nam", href: categoryHref(categories, "Áo", ["ao"], { gender: "MALE" }) },
+            { label: "Quần nam", href: categoryHref(categories, "Quần", ["quan"], { gender: "MALE" }) },
+            { label: "Giày nam", href: groupHref(categories, "shoes", { gender: "MALE" }) },
+            { label: "Phụ kiện nam", href: groupHref(categories, "accessories", { gender: "MALE" }) },
+          ],
+        },
+        {
+          title: "Theo môn thể thao",
+          links: buildSportLinks(sportItems, (sport) => sport.name, { gender: "MALE" }),
+        },
+        {
+          title: "Nổi bật",
+          links: featuredLinks({ gender: "MALE" }),
+        },
+      ],
+      feature: {
+        eyebrow: "Men collection",
+        title: "Phong cách thể thao hiện đại",
+        description:
+          "Khám phá bộ sưu tập nam với thiết kế mạnh mẽ, thoải mái và phù hợp cho cả tập luyện lẫn thường ngày.",
+        ctaLabel: "Mua ngay",
+        ctaHref: productUrl({ gender: "MALE" }),
+      },
+    },
+    {
+      label: "Nữ",
+      href: productUrl({ gender: "FEMALE" }),
+      type: "mega",
+      columns: [
+        {
+          title: "Theo danh mục",
+          links: [
+            { label: "Áo nữ", href: categoryHref(categories, "Áo", ["ao"], { gender: "FEMALE" }) },
+            { label: "Quần nữ", href: categoryHref(categories, "Quần", ["quan"], { gender: "FEMALE" }) },
+            { label: "Giày nữ", href: groupHref(categories, "shoes", { gender: "FEMALE" }) },
+            { label: "Phụ kiện nữ", href: groupHref(categories, "accessories", { gender: "FEMALE" }) },
+          ],
+        },
+        {
+          title: "Theo môn thể thao",
+          links: buildSportLinks(sportItems, (sport) => sport.name, { gender: "FEMALE" }),
+        },
+        {
+          title: "Nổi bật",
+          links: featuredLinks({ gender: "FEMALE" }),
+        },
+      ],
+      feature: {
+        eyebrow: "Women collection",
+        title: "Năng động, tinh tế, thoải mái",
+        description:
+          "Những thiết kế nữ tính nhưng vẫn tối ưu cho vận động, tập luyện và phong cách sống active mỗi ngày.",
+        ctaLabel: "Khám phá",
+        ctaHref: productUrl({ gender: "FEMALE" }),
+      },
+    },
+    {
+      label: "Giày",
+      href: groupHref(categories, "shoes"),
+      type: "mega",
+      columns: [
+        {
+          title: "Theo giới tính",
+          links: [
+            { label: "Giày nam", href: groupHref(categories, "shoes", { gender: "MALE" }) },
+            { label: "Giày nữ", href: groupHref(categories, "shoes", { gender: "FEMALE" }) },
+            { label: "Giày unisex", href: groupHref(categories, "shoes", { gender: "UNISEX" }) },
+          ],
+        },
+        {
+          title: "Theo môn thể thao",
+          links: [
+            { label: "Giày bóng đá", href: sportHref({ name: "Bóng đá" }, { categoryGroup: "shoes" }) },
+            { label: "Giày chạy bộ", href: sportHref({ name: "Chạy bộ" }, { categoryGroup: "shoes" }) },
+            { label: "Giày bóng rổ", href: sportHref({ name: "Bóng rổ" }, { categoryGroup: "shoes" }) },
+            { label: "Giày bóng chuyền", href: sportHref({ name: "Bóng chuyền" }, { categoryGroup: "shoes" }) },
+            { label: "Giày tennis", href: sportHref({ name: "Tennis" }, { categoryGroup: "shoes" }) },
+            { label: "Giày cầu lông", href: sportHref({ name: "Cầu lông" }, { categoryGroup: "shoes" }) },
+          ].map((link) => {
+            const matchedSport = sportItems.find(
+              (sport) => normalizeText(sport.name) === normalizeText(link.label.replace(/^Giày\s+/i, ""))
+            );
+
+            return matchedSport?.id
+              ? {
+                  ...link,
+                  href: sportHref(matchedSport, {
+                    categoryGroup: "shoes",
+                  }),
+                }
+              : {
+                  ...link,
+                  href: productUrl({
+                    categoryGroup: "shoes",
+                    sport: link.label.replace(/^Giày\s+/i, ""),
+                  }),
+                };
+          }),
+        },
+        {
+          title: "Nổi bật",
+          links: featuredLinks({
+            categoryGroup: "shoes",
+          }),
+        },
+      ],
+      feature: {
+        eyebrow: "Footwear",
+        title: "Bứt tốc trong từng bước chạy",
+        description:
+          "Những mẫu giày thể thao tối ưu độ bám, độ êm và cảm giác linh hoạt trong mọi chuyển động.",
+        ctaLabel: "Xem giày",
+        ctaHref: groupHref(categories, "shoes"),
+      },
+    },
+    {
+      label: "Quần Áo",
+      href: groupHref(categories, "apparel"),
+      type: "mega",
+      columns: [
+        {
+          title: "Theo giới tính",
+          links: [
+            { label: "Quần áo nam", href: groupHref(categories, "apparel", { gender: "MALE" }) },
+            { label: "Quần áo nữ", href: groupHref(categories, "apparel", { gender: "FEMALE" }) },
+            { label: "Quần áo unisex", href: groupHref(categories, "apparel", { gender: "UNISEX" }) },
+          ],
+        },
+        {
+          title: "Môn thể thao",
+          links: buildSportLinks(sportItems, (sport) => sport.name, {
+            categoryGroup: "apparel",
+          }),
+        },
+        {
+          title: "Nổi bật",
+          links: featuredLinks({
+            categoryGroup: "apparel",
+          }),
+        },
+      ],
+      feature: {
+        eyebrow: "Apparel",
+        title: "Mặc đẹp khi vận động",
+        description:
+          "Tập trung vào form dáng, độ thoáng và chất liệu để bạn mặc đẹp cả trong phòng tập lẫn ngoài phố.",
+        ctaLabel: "Xem quần áo",
+        ctaHref: groupHref(categories, "apparel"),
+      },
+    },
+    {
+      label: "Phụ kiện",
+      href: groupHref(categories, "accessories"),
+      type: "mega",
+      columns: [
+        {
+          title: "Phổ biến",
+          links: [
+            { label: "Túi", href: productUrl({ categoryGroup: "accessories", keyword: "túi" }) },
+            { label: "Mũ", href: productUrl({ categoryGroup: "accessories", keyword: "mũ" }) },
+            { label: "Balo", href: productUrl({ categoryGroup: "accessories", keyword: "balo" }) },
+            { label: "Tất", href: productUrl({ categoryGroup: "accessories", keyword: "tất" }) },
+          ],
+        },
+        {
+          title: "Theo môn thể thao",
+          links: buildSportLinks(sportItems, (sport) => sport.name, {
+            categoryGroup: "accessories",
+          }),
+        },
+        {
+          title: "Nổi bật",
+          links: featuredLinks({
+            categoryGroup: "accessories",
+          }),
+        },
+      ],
+      feature: {
+        eyebrow: "Accessories",
+        title: "Hoàn thiện set đồ thể thao",
+        description:
+          "Phụ kiện giúp bạn tối ưu công năng, đồng thời tăng điểm nhấn cho phong cách năng động hằng ngày.",
+        ctaLabel: "Xem phụ kiện",
+        ctaHref: groupHref(categories, "accessories"),
+      },
+    },
+    {
+      label: "Sale",
+      href: productUrl({ promotionOnly: "true" }),
+      type: "mega",
+      columns: [
+        {
+          title: "Danh mục giảm giá",
+          links: discountCategoryLinks(categories),
+        },
+        {
+          title: "Môn thể thao",
+          links: buildSportLinks(sportItems, (sport) => `${sport.name} sale`, {
+            promotionOnly: "true",
+          }),
+        },
+        {
+          title: "Chương trình",
+          links: promotionProgramLinks(promotions),
+        },
+      ],
+      feature: {
+        eyebrow: "Sale up to",
+        title: "Ưu đãi tốt cho nhiều dòng sản phẩm",
+        description:
+          "Tổng hợp các sản phẩm đang có giá tốt để bạn mua nhanh hơn mà vẫn đúng nhu cầu.",
+        ctaLabel: "Xem sale",
+        ctaHref: productUrl({ promotionOnly: "true" }),
+      },
+    },
+  ];
+};
+
+const visibleNavItems = buildMegaNavItems();
+const navItems = visibleNavItems;
+
+export {
+  productUrl,
+  quickSearches,
+  buildMegaNavItems,
+  navItems,
+  visibleNavItems,
+  getCategoryGroupIds,
+  normalizeText,
+};

@@ -11,6 +11,8 @@ public interface PromotionService {
 
     List<PromotionResponse> getActivePublicPromotions();
 
+    List<PromotionResponse> getVisiblePublicPromotions();
+
     PromotionResponse getPromotionById(Long id);
 
     PromotionResponse createPromotion(CreatePromotionRequest request);

@@ -142,7 +142,7 @@ const MobilePanels = ({
                               </p>
 
                               <div className="space-y-1.5">
-                                {column.links?.slice(0, 4).map((link) => (
+                                {column.links?.map((link) => (
                                   <Link
                                     key={link.label}
                                     to={link.href}

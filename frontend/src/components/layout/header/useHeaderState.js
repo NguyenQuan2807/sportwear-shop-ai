@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { productUrl, visibleNavItems } from "./header.data";
+import { productUrl, visibleNavItems as fallbackNavItems } from "./header.data";
 
 const SHOW_TOP_THRESHOLD = 8;
 const HIDE_TOP_THRESHOLD = 42;
 
-const useHeaderState = () => {
+const useHeaderState = (navigationItems = fallbackNavItems) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -89,8 +89,8 @@ const useHeaderState = () => {
   }, []);
 
   const activeMenuData = useMemo(
-    () => visibleNavItems.find((item) => item.label === activeMenu),
-    [activeMenu]
+    () => navigationItems.find((item) => item.label === activeMenu),
+    [activeMenu, navigationItems]
   );
 
   const handleSearchSubmit = (e) => {
@@ -117,6 +117,7 @@ const useHeaderState = () => {
     if (location.pathname !== "/products") return false;
 
     const params = new URLSearchParams(location.search);
+    const categoryGroup = params.get("categoryGroup");
 
     switch (item.label) {
       case "Nam":
@@ -124,13 +125,13 @@ const useHeaderState = () => {
       case "Nữ":
         return params.get("gender") === "FEMALE";
       case "Giày":
-        return params.get("category") === "Giày";
+        return categoryGroup === "shoes" || params.get("category") === "Giày";
       case "Quần Áo":
-        return params.get("category") === "Quần áo";
+        return categoryGroup === "apparel" || params.get("category") === "Quần áo";
       case "Phụ kiện":
-        return params.get("category") === "Phụ kiện";
+        return categoryGroup === "accessories" || params.get("category") === "Phụ kiện";
       case "Sale":
-        return params.get("sale") === "true";
+        return params.get("promotionOnly") === "true" || params.get("sale") === "true" || Boolean(params.get("promotionId"));
       default:
         return false;
     }

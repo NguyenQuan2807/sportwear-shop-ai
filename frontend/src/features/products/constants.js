@@ -1,9 +1,13 @@
 export const DEFAULT_FILTERS = {
+  keyword: "",
   categoryId: "",
+  categoryIds: "",
+  categoryGroup: "",
   brandId: "",
   sportId: "",
   gender: "",
   promotionOnly: "",
+  promotionId: "",
   minPrice: "",
   maxPrice: "",
   sort: "newest",
@@ -14,8 +18,10 @@ export const DEFAULT_FILTERS = {
 export const SORT_OPTIONS = [
   { value: "newest", label: "Mới nhất" },
   { value: "oldest", label: "Cũ nhất" },
+  { value: "popular", label: "Bán chạy" },
   { value: "priceAsc", label: "Giá thấp đến cao" },
   { value: "priceDesc", label: "Giá cao đến thấp" },
+  { value: "discountDesc", label: "Giảm giá nhiều" },
 ];
 
 export const GENDER_OPTIONS = [

@@ -1,5 +1,6 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
+import com.nguyenhuuquan.sportwearshop.common.enums.PromotionTargetType;
 import com.nguyenhuuquan.sportwearshop.common.exception.ResourceNotFoundException;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductDetailResponse;
 import com.nguyenhuuquan.sportwearshop.dto.product.ProductImageResponse;
@@ -11,9 +12,11 @@ import com.nguyenhuuquan.sportwearshop.dto.promotion.VariantPricingResponse;
 import com.nguyenhuuquan.sportwearshop.entity.Product;
 import com.nguyenhuuquan.sportwearshop.entity.ProductImage;
 import com.nguyenhuuquan.sportwearshop.entity.ProductVariant;
+import com.nguyenhuuquan.sportwearshop.entity.PromotionTarget;
 import com.nguyenhuuquan.sportwearshop.repository.ProductImageRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductRepository;
 import com.nguyenhuuquan.sportwearshop.repository.ProductVariantRepository;
+import com.nguyenhuuquan.sportwearshop.repository.PromotionTargetRepository;
 import com.nguyenhuuquan.sportwearshop.service.ProductService;
 import com.nguyenhuuquan.sportwearshop.service.PromotionPricingService;
 import com.nguyenhuuquan.sportwearshop.specification.ProductSpecification;
@@ -29,6 +32,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,15 +42,18 @@ public class ProductServiceImpl implements ProductService {
     private final ProductVariantRepository productVariantRepository;
     private final ProductImageRepository productImageRepository;
     private final PromotionPricingService promotionPricingService;
+    private final PromotionTargetRepository promotionTargetRepository;
 
     public ProductServiceImpl(ProductRepository productRepository,
                               ProductVariantRepository productVariantRepository,
                               ProductImageRepository productImageRepository,
-                              PromotionPricingService promotionPricingService) {
+                              PromotionPricingService promotionPricingService,
+                              PromotionTargetRepository promotionTargetRepository) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.productImageRepository = productImageRepository;
         this.promotionPricingService = promotionPricingService;
+        this.promotionTargetRepository = promotionTargetRepository;
     }
 
     @Override
@@ -54,13 +61,15 @@ public class ProductServiceImpl implements ProductService {
         Specification<Product> specification = ProductSpecification.isActive()
                 .and(ProductSpecification.hasKeyword(request.getKeyword()))
                 .and(ProductSpecification.hasCategoryId(request.getCategoryId()))
+                .and(ProductSpecification.hasCategoryIds(request.getCategoryIds()))
+                .and(ProductSpecification.hasCategoryGroup(resolveCategoryGroup(request)))
                 .and(ProductSpecification.hasBrandId(request.getBrandId()))
                 .and(ProductSpecification.hasSportId(request.getSportId()))
                 .and(ProductSpecification.hasGender(request.getGender()))
                 .and(ProductSpecification.hasPriceBetween(request.getMinPrice(), request.getMaxPrice()));
 
-        if (isPriceSort(request.getSort()) || Boolean.TRUE.equals(request.getPromotionOnly())) {
-            return getAllProductsWithComputedPriceSort(request, specification);
+        if (needsComputedCatalog(request)) {
+            return getAllProductsWithComputedFilters(request, specification);
         }
 
         Sort sort = buildSort(request.getSort());
@@ -86,6 +95,18 @@ public class ProductServiceImpl implements ProductService {
         response.setLast(productPage.isLast());
 
         return response;
+    }
+
+    private String resolveCategoryGroup(ProductSearchRequest request) {
+        if (request.getCategoryId() != null) {
+            return null;
+        }
+
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            return null;
+        }
+
+        return request.getCategoryGroup();
     }
 
     @Override
@@ -125,22 +146,32 @@ public class ProductServiceImpl implements ProductService {
         return response;
     }
 
-    private ProductPageResponse getAllProductsWithComputedPriceSort(ProductSearchRequest request,
-                                                                    Specification<Product> specification) {
-        Sort baseSort = isPriceSort(request.getSort()) ? Sort.by(Sort.Direction.DESC, "id") : buildSort(request.getSort());
+    private boolean needsComputedCatalog(ProductSearchRequest request) {
+        return isPriceSort(request.getSort())
+                || isDiscountSort(request.getSort())
+                || Boolean.TRUE.equals(request.getPromotionOnly())
+                || request.getPromotionId() != null;
+    }
+
+    private ProductPageResponse getAllProductsWithComputedFilters(ProductSearchRequest request,
+                                                                  Specification<Product> specification) {
+        Sort baseSort = isPriceSort(request.getSort()) || isDiscountSort(request.getSort())
+                ? Sort.by(Sort.Direction.DESC, "id")
+                : buildSort(request.getSort());
+
         List<Product> products = productRepository.findAll(specification, baseSort);
         Map<Long, List<ProductVariant>> variantsByProductId = loadVariantsByProductId(products);
 
-        Comparator<ProductResponse> comparator = Comparator.comparing(
-                this::resolveSortablePrice,
-                Comparator.nullsLast(Double::compareTo)
-        );
-
-        if ("priceDesc".equalsIgnoreCase(request.getSort())) {
-            comparator = comparator.reversed();
-        }
+        List<PromotionTarget> promotionTargets = request.getPromotionId() != null
+                ? promotionTargetRepository.findByPromotionId(request.getPromotionId())
+                : Collections.emptyList();
 
         List<ProductResponse> allResponses = products.stream()
+                .filter(product -> request.getPromotionId() == null || matchesPromotionTargets(
+                        product,
+                        variantsByProductId.getOrDefault(product.getId(), Collections.emptyList()),
+                        promotionTargets
+                ))
                 .map(product -> mapToProductResponse(
                         product,
                         variantsByProductId.getOrDefault(product.getId(), Collections.emptyList())
@@ -149,7 +180,25 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
 
         if (isPriceSort(request.getSort())) {
+            Comparator<ProductResponse> comparator = Comparator.comparing(
+                    this::resolveSortablePrice,
+                    Comparator.nullsLast(Double::compareTo)
+            );
+
+            if ("priceDesc".equalsIgnoreCase(request.getSort())) {
+                comparator = comparator.reversed();
+            }
+
             allResponses = allResponses.stream().sorted(comparator).collect(Collectors.toList());
+        }
+
+        if (isDiscountSort(request.getSort())) {
+            allResponses = allResponses.stream()
+                    .sorted(Comparator.comparing(
+                            ProductResponse::getMaxDiscountPercent,
+                            Comparator.nullsLast(Integer::compareTo)
+                    ).reversed())
+                    .collect(Collectors.toList());
         }
 
         int totalElements = allResponses.size();
@@ -167,6 +216,52 @@ public class ProductServiceImpl implements ProductService {
         return response;
     }
 
+    private boolean matchesPromotionTargets(Product product,
+                                            List<ProductVariant> variants,
+                                            List<PromotionTarget> promotionTargets) {
+        if (promotionTargets == null || promotionTargets.isEmpty()) {
+            return false;
+        }
+
+        Set<Long> variantIds = variants.stream()
+                .map(ProductVariant::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        for (PromotionTarget target : promotionTargets) {
+            PromotionTargetType type = target.getTargetType();
+            Long targetId = target.getTargetId();
+
+            if (type == PromotionTargetType.PRODUCT && Objects.equals(targetId, product.getId())) {
+                return true;
+            }
+
+            if (type == PromotionTargetType.PRODUCT_VARIANT && variantIds.contains(targetId)) {
+                return true;
+            }
+
+            if (type == PromotionTargetType.CATEGORY
+                    && product.getCategory() != null
+                    && Objects.equals(targetId, product.getCategory().getId())) {
+                return true;
+            }
+
+            if (type == PromotionTargetType.BRAND
+                    && product.getBrand() != null
+                    && Objects.equals(targetId, product.getBrand().getId())) {
+                return true;
+            }
+
+            if (type == PromotionTargetType.SPORT
+                    && product.getSport() != null
+                    && Objects.equals(targetId, product.getSport().getId())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private Double resolveSortablePrice(ProductResponse productResponse) {
         if (productResponse == null) {
             return null;
@@ -181,6 +276,10 @@ public class ProductServiceImpl implements ProductService {
 
     private boolean isPriceSort(String sortValue) {
         return "priceAsc".equalsIgnoreCase(sortValue) || "priceDesc".equalsIgnoreCase(sortValue);
+    }
+
+    private boolean isDiscountSort(String sortValue) {
+        return "discountDesc".equalsIgnoreCase(sortValue);
     }
 
     private Map<Long, List<ProductVariant>> loadVariantsByProductId(List<Product> products) {
@@ -312,7 +411,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         return switch (sortValue) {
-            case "newest" -> Sort.by(Sort.Direction.DESC, "id");
+            case "newest", "popular" -> Sort.by(Sort.Direction.DESC, "id");
             case "oldest" -> Sort.by(Sort.Direction.ASC, "id");
             default -> Sort.by(Sort.Direction.DESC, "id");
         };

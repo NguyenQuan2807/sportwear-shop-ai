@@ -24,4 +24,9 @@ public class PromotionController {
     public List<PromotionResponse> getActivePromotions() {
         return promotionService.getActivePublicPromotions();
     }
+
+    @GetMapping("/visible")
+    public List<PromotionResponse> getVisiblePromotions() {
+        return promotionService.getVisiblePublicPromotions();
+    }
 }

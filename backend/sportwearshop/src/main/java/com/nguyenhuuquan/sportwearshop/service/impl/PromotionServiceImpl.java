@@ -64,6 +64,38 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     @Override
+    public List<PromotionResponse> getVisiblePublicPromotions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        return promotionRepository.findAll()
+                .stream()
+                .filter(promotion -> Boolean.TRUE.equals(promotion.getIsActive()))
+                .filter(promotion -> promotion.getStatus() != null)
+                .filter(promotion -> {
+                    String status = promotion.getStatus().name();
+                    return "ACTIVE".equals(status) || "SCHEDULED".equals(status);
+                })
+                .filter(promotion -> promotion.getEndTime() == null || !promotion.getEndTime().isBefore(now))
+                .sorted((a, b) -> {
+                    int priorityCompare = Integer.compare(
+                            b.getPriority() != null ? b.getPriority() : 0,
+                            a.getPriority() != null ? a.getPriority() : 0
+                    );
+
+                    if (priorityCompare != 0) {
+                        return priorityCompare;
+                    }
+
+                    if (a.getStartTime() == null && b.getStartTime() == null) return 0;
+                    if (a.getStartTime() == null) return 1;
+                    if (b.getStartTime() == null) return -1;
+                    return a.getStartTime().compareTo(b.getStartTime());
+                })
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PromotionResponse getPromotionById(Long id) {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy promotion"));

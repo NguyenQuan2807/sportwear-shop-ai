@@ -7,6 +7,8 @@ import com.nguyenhuuquan.sportwearshop.dto.product.ProductSearchRequest;
 import com.nguyenhuuquan.sportwearshop.service.ProductService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -21,10 +23,13 @@ public class ProductController {
     public ProductPageResponse getAllProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) List<Long> categoryIds,
+            @RequestParam(required = false) String categoryGroup,
             @RequestParam(required = false) Long brandId,
             @RequestParam(required = false) Long sportId,
             @RequestParam(required = false) Gender gender,
             @RequestParam(required = false, defaultValue = "false") Boolean promotionOnly,
+            @RequestParam(required = false) Long promotionId,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "newest") String sort,
@@ -34,10 +39,13 @@ public class ProductController {
         ProductSearchRequest request = new ProductSearchRequest();
         request.setKeyword(keyword);
         request.setCategoryId(categoryId);
+        request.setCategoryIds(categoryIds);
+        request.setCategoryGroup(categoryGroup);
         request.setBrandId(brandId);
         request.setSportId(sportId);
         request.setGender(gender);
         request.setPromotionOnly(promotionOnly);
+        request.setPromotionId(promotionId);
         request.setMinPrice(minPrice);
         request.setMaxPrice(maxPrice);
         request.setSort(sort);

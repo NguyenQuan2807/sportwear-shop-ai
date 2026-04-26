@@ -1,9 +1,17 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import useWishlist from "../../../hooks/useWishlist";
+import { getCategoriesApi } from "../../../services/categoryService";
+import { getSportsApi } from "../../../services/sportService";
+import { getVisiblePromotionsApi } from "../../../services/promotionService";
 import logo from "../../../assets/logo.png";
 
-import { quickSearches, visibleNavItems } from "./header.data";
+import {
+  buildMegaNavItems,
+  quickSearches,
+  visibleNavItems as fallbackNavItems,
+} from "./header.data";
 import useHeaderState from "./useHeaderState";
 import useCartCount from "./useCartCount";
 import DesktopNav from "./DesktopNav";
@@ -50,6 +58,56 @@ const Header = () => {
   const cartCount = useCartCount(user);
   const { wishlistCount } = useWishlist();
 
+  const [megaMenuData, setMegaMenuData] = useState({
+    categories: [],
+    sports: [],
+    promotions: [],
+  });
+
+  useEffect(() => {
+    let ignore = false;
+
+    const fetchMegaMenuData = async () => {
+      try {
+        const [categoriesRes, sportsRes, promotionsRes] = await Promise.allSettled([
+          getCategoriesApi(),
+          getSportsApi(),
+          getVisiblePromotionsApi(),
+        ]);
+
+        if (ignore) return;
+
+        setMegaMenuData({
+          categories:
+            categoriesRes.status === "fulfilled" && Array.isArray(categoriesRes.value?.data)
+              ? categoriesRes.value.data
+              : [],
+          sports:
+            sportsRes.status === "fulfilled" && Array.isArray(sportsRes.value?.data)
+              ? sportsRes.value.data
+              : [],
+          promotions:
+            promotionsRes.status === "fulfilled" && Array.isArray(promotionsRes.value?.data)
+              ? promotionsRes.value.data
+              : [],
+        });
+      } catch (error) {
+        console.error("Không thể tải dữ liệu mega menu", error);
+      }
+    };
+
+    fetchMegaMenuData();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const visibleNavItems = useMemo(
+    () => buildMegaNavItems(megaMenuData),
+    [megaMenuData]
+  );
+
   const {
     mobileOpen,
     setMobileOpen,
@@ -69,7 +127,7 @@ const Header = () => {
     handleSearchSubmit,
     handleQuickSearch,
     isItemActive,
-  } = useHeaderState();
+  } = useHeaderState(visibleNavItems.length > 0 ? visibleNavItems : fallbackNavItems);
 
   const orderPath = "/orders";
   const adminPath = "/admin";
