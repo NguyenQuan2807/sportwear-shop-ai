@@ -1,41 +1,30 @@
 package com.nguyenhuuquan.sportwearshop.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nguyenhuuquan.sportwearshop.dto.ai.AiChatMessage;
+import com.nguyenhuuquan.sportwearshop.dto.ai.AiChatMessageDto;
 import com.nguyenhuuquan.sportwearshop.dto.ai.AiChatRequest;
 import com.nguyenhuuquan.sportwearshop.dto.ai.AiChatResponse;
-import com.nguyenhuuquan.sportwearshop.dto.ai.AiProductSuggestion;
-import com.nguyenhuuquan.sportwearshop.dto.product.ProductDetailResponse;
-import com.nguyenhuuquan.sportwearshop.dto.product.ProductPageResponse;
-import com.nguyenhuuquan.sportwearshop.dto.product.ProductResponse;
-import com.nguyenhuuquan.sportwearshop.dto.product.ProductSearchRequest;
-import com.nguyenhuuquan.sportwearshop.dto.product.ProductVariantResponse;
+import com.nguyenhuuquan.sportwearshop.dto.ai.AiProductSuggestionResponse;
+import com.nguyenhuuquan.sportwearshop.dto.ai.ProductAiSearchCandidateResponse;
+import com.nguyenhuuquan.sportwearshop.dto.ai.ProductAiSearchDebugResponse;
+import com.nguyenhuuquan.sportwearshop.dto.ai.ProductFactAnswer;
+import com.nguyenhuuquan.sportwearshop.entity.AiConversation;
+import com.nguyenhuuquan.sportwearshop.entity.AiMessage;
 import com.nguyenhuuquan.sportwearshop.service.AiChatService;
-import com.nguyenhuuquan.sportwearshop.service.ProductService;
+import com.nguyenhuuquan.sportwearshop.service.ProductAiSearchService;
+import com.nguyenhuuquan.sportwearshop.util.AiTextNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.text.Normalizer;
-import java.text.NumberFormat;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,748 +32,375 @@ public class AiChatServiceImpl implements AiChatService {
 
     private static final Logger log = LoggerFactory.getLogger(AiChatServiceImpl.class);
 
-    private static final int SEARCH_SIZE_PER_QUERY = 12;
-    private static final int FALLBACK_CATALOG_SIZE = 30;
-    private static final int MAX_DETAIL_PRODUCTS = 8;
-    private static final int MAX_SUGGESTIONS = 6;
+    private static final String SHOP_KNOWLEDGE = """
+            Bạn là Sportwear AI - trợ lý tư vấn của Sportwear Shop.
+            Phạm vi hỗ trợ:
+            - Tư vấn sản phẩm thể thao theo nhu cầu, ngân sách, môn thể thao, size, màu, brand.
+            - Trả lời thông tin sản phẩm theo dữ liệu thật từ database: giá, size, màu, tồn kho, khuyến mãi.
+            - Hướng dẫn đặt hàng: chọn sản phẩm, chọn size/màu, thêm vào giỏ hàng, checkout.
+            - Thanh toán: khách xem phương thức thanh toán ở bước checkout.
+            - Giao hàng: thời gian phụ thuộc địa chỉ và đơn vị vận chuyển.
+            - Đơn hàng: khách kiểm tra trong mục Đơn hàng hoặc liên hệ shop với mã đơn.
+            Không bịa sản phẩm, giá, size, màu, tồn kho, khuyến mãi hoặc trạng thái đơn hàng.
+            """;
 
-    private final ProductService productService;
-    private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
+    private final ProductAiSearchService productAiSearchService;
+    private final AiConversationMemoryService aiConversationMemoryService;
+    private final ProductFactAnswerService productFactAnswerService;
+    private final RestClient restClient;
 
     @Value("${app.ai.enabled:true}")
     private boolean aiEnabled;
 
+    @Value("${app.ai.max-history:8}")
+    private int maxHistory;
+
+    /*
+     * Mặc định false để tiết kiệm quota.
+     * Khi false: Gemini chỉ dùng trong ProductAiSearchServiceImpl để rerank sản phẩm.
+     * AiChatServiceImpl sẽ viết câu trả lời bằng template thông minh từ kết quả đã rerank.
+     * Nếu muốn gọi Gemini thêm lần nữa để viết văn phong tự nhiên hơn, đặt:
+     * app.ai.answer-with-gemini=true
+     */
+    @Value("${app.ai.answer-with-gemini:false}")
+    private boolean answerWithGemini;
+
     @Value("${app.ai.gemini.api-key:}")
     private String geminiApiKey;
 
-    @Value("${app.ai.gemini.model:gemini-2.0-flash}")
+    @Value("${app.ai.gemini.model:gemini-2.5-flash}")
     private String geminiModel;
 
     @Value("${app.ai.gemini.url:https://generativelanguage.googleapis.com/v1beta/models}")
     private String geminiBaseUrl;
 
-    @Value("${app.ai.max-history:10}")
-    private int maxHistory;
-
-    public AiChatServiceImpl(ProductService productService, ObjectMapper objectMapper) {
-        this.productService = productService;
-        this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(15))
-                .build();
+    public AiChatServiceImpl(ProductAiSearchService productAiSearchService,
+                             AiConversationMemoryService aiConversationMemoryService,
+                             ProductFactAnswerService productFactAnswerService) {
+        this.productAiSearchService = productAiSearchService;
+        this.aiConversationMemoryService = aiConversationMemoryService;
+        this.productFactAnswerService = productFactAnswerService;
+        this.restClient = RestClient.builder().build();
     }
 
     @Override
     public AiChatResponse chat(AiChatRequest request) {
-        String userMessage = request.getMessage() == null ? "" : request.getMessage().trim();
-        List<AiChatMessage> history = safeHistory(request.getHistory());
+        String message = sanitize(request.message());
 
-        if (!aiEnabled || !StringUtils.hasText(geminiApiKey)) {
-            return AiChatResponse.of(
-                    "Mình chưa thể trò chuyện tự nhiên vì backend chưa đọc được GEMINI_API_KEY. "
-                            + "Bạn hãy cấu hình GEMINI_API_KEY rồi chạy lại backend nhé.",
-                    List.of()
-            );
+        AiConversation conversation = aiConversationMemoryService.resolveConversation(
+                request.conversationId(),
+                request.sessionId()
+        );
+
+        List<AiChatMessageDto> history = aiConversationMemoryService.loadHistory(
+                conversation,
+                request.history(),
+                maxHistory
+        );
+
+        aiConversationMemoryService.saveMessage(conversation, "user", message);
+
+        Optional<ProductFactAnswer> factAnswer = productFactAnswerService.tryAnswer(message, conversation);
+        if (factAnswer.isPresent()) {
+            ProductFactAnswer answer = factAnswer.get();
+            aiConversationMemoryService.saveMessage(conversation, "assistant", answer.reply());
+            return new AiChatResponse(conversation.getId(), answer.reply(), answer.suggestions());
         }
 
-        try {
-            AiPlan plan = createPlan(userMessage, history);
-            List<CandidateProduct> candidates = plan.needsProductData
-                    ? collectProductContext(plan, userMessage, history)
-                    : List.of();
+        ProductAiSearchDebugResponse searchResult = productAiSearchService.search(message, history, 5);
+        List<ProductAiSearchCandidateResponse> candidates = searchResult.results();
 
-            String reply = createNaturalAnswer(userMessage, history, plan, candidates);
-            List<AiProductSuggestion> suggestions = buildSuggestions(reply, candidates, plan);
-
-            return AiChatResponse.of(reply, suggestions);
-        } catch (Exception ex) {
-            log.error("AI chatbox processing failed", ex);
-
-            String reason = ex.getMessage();
-            if (!StringUtils.hasText(reason)) {
-                reason = ex.getClass().getSimpleName();
-            }
-
-            return AiChatResponse.of(
-                    "Mình đang gặp lỗi khi xử lý câu hỏi này. Lý do kỹ thuật: " + reason
-                            + "\n\nBạn xem log backend để biết chi tiết. Nếu là lỗi 429 thì thường là quá quota/rate limit; "
-                            + "nếu là 400 thì thường là request gửi sang Gemini chưa hợp lệ hoặc context quá dài.",
-                    List.of()
-            );
+        String reply = null;
+        if (answerWithGemini && aiEnabled && AiTextNormalizer.hasText(geminiApiKey)) {
+            reply = askGemini(buildPrompt(message, history, searchResult));
         }
+
+        if (!AiTextNormalizer.hasText(reply)) {
+            reply = buildSmartLocalReply(message, searchResult);
+        }
+
+        List<AiProductSuggestionResponse> suggestions = searchResult.intent().shouldSearchProducts()
+                ? candidates.stream()
+                .limit(4)
+                .map(this::toSuggestionResponse)
+                .toList()
+                : List.of();
+
+        AiMessage assistantMessage = aiConversationMemoryService.saveMessage(conversation, "assistant", reply);
+
+        if (searchResult.intent().shouldSearchProducts() && !candidates.isEmpty()) {
+            aiConversationMemoryService.saveSuggestions(conversation, assistantMessage, candidates);
+        }
+
+        return new AiChatResponse(conversation.getId(), reply, suggestions);
     }
 
-    private AiPlan createPlan(String userMessage, List<AiChatMessage> history) throws Exception {
+    private AiProductSuggestionResponse toSuggestionResponse(ProductAiSearchCandidateResponse candidate) {
+        return new AiProductSuggestionResponse(
+                candidate.productId(),
+                candidate.name(),
+                candidate.thumbnailUrl(),
+                candidate.productUrl(),
+                candidate.priceLabel(),
+                candidate.reason(),
+                candidate.sizes(),
+                candidate.colors()
+        );
+    }
+
+    private String buildPrompt(String message,
+                               List<AiChatMessageDto> history,
+                               ProductAiSearchDebugResponse searchResult) {
+        return """
+                %s
+
+                Nguyên tắc trả lời:
+                - Trả lời bằng tiếng Việt tự nhiên, giống nhân viên tư vấn thương mại điện tử.
+                - Dựa vào Product search và dữ liệu thật trong prompt.
+                - Nếu product search có kết quả, hãy chọn 2-3 sản phẩm phù hợp nhất và giải thích ngắn vì sao hợp.
+                - Nếu khách hỏi size/sz/kích cỡ/màu/giá/tồn kho của sản phẩm vừa được tư vấn, hãy trả lời trực tiếp bằng dữ liệu trong Product search.
+                - Không nói "không có thông tin size" nếu Product search đã có trường Size.
+                - Nếu product search không có kết quả, nói rõ chưa tìm thấy sản phẩm đủ khớp và hỏi thêm đúng 1 câu để lọc lại.
+                - Nếu câu hỏi không phải tìm sản phẩm, không gợi ý sản phẩm.
+                - Không bịa sản phẩm ngoài danh sách product search.
+                - Không dùng bảng, không trả JSON.
+
+                Lịch sử chat gần đây:
+                %s
+
+                Tin nhắn hiện tại:
+                %s
+
+                Intent/search đã phân tích:
+                %s
+
+                Kết quả product search:
+                %s
+                """.formatted(
+                SHOP_KNOWLEDGE,
+                buildHistoryText(history),
+                message,
+                searchResult.intent(),
+                buildProductContext(searchResult)
+        );
+    }
+
+    private String buildProductContext(ProductAiSearchDebugResponse searchResult) {
+        if (searchResult.results() == null || searchResult.results().isEmpty()) {
+            return "(Không có sản phẩm đủ khớp.) Ghi chú: " + searchResult.note();
+        }
+
+        return searchResult.results().stream()
+                .limit(5)
+                .map(candidate -> """
+                        - Score: %s
+                          ID: %s
+                          Tên: %s
+                          Brand: %s
+                          Danh mục: %s
+                          Môn thể thao: %s
+                          Giới tính: %s
+                          Giá: %s
+                          Tồn kho: %s
+                          Khuyến mãi: %s
+                          Size: %s
+                          Màu: %s
+                          Lý do chọn: %s
+                          Debug reasons: %s
+                          Link: %s
+                        """.formatted(
+                        candidate.score(),
+                        candidate.productId(),
+                        candidate.name(),
+                        candidate.brand(),
+                        candidate.category(),
+                        candidate.sport(),
+                        candidate.gender(),
+                        candidate.priceLabel(),
+                        Boolean.TRUE.equals(candidate.inStock()) ? "Còn hàng" : "Có thể hết hàng",
+                        Boolean.TRUE.equals(candidate.onPromotion()) ? "Có" : "Không",
+                        AiTextNormalizer.hasText(candidate.sizes()) ? candidate.sizes() : "Chưa có dữ liệu size",
+                        AiTextNormalizer.hasText(candidate.colors()) ? candidate.colors() : "Chưa có dữ liệu màu",
+                        candidate.reason(),
+                        String.join("; ", candidate.scoreReasons()),
+                        candidate.productUrl()
+                ))
+                .collect(Collectors.joining("\n"));
+    }
+
+    private String askGemini(String prompt) {
         try {
-            String prompt = """
-                Bạn là bộ não điều phối cho AI chatbox của Sportwear Shop.
-                Nhiệm vụ của bạn là hiểu câu hỏi mới nhất của khách trong ngữ cảnh hội thoại.
+            URI uri = UriComponentsBuilder
+                    .fromUriString(geminiBaseUrl + "/" + geminiModel + ":generateContent")
+                    .queryParam("key", geminiApiKey)
+                    .build()
+                    .toUri();
 
-                Trả về JSON THUẦN, không markdown, không giải thích.
-                Không cần trả lời khách ở bước này.
-
-                Các intent:
-                - GENERAL_CHAT: chào hỏi, cảm ơn, nói chuyện chung.
-                - SHOP_HELP: hỏi cách mua hàng, thanh toán, giao hàng, đổi trả.
-                - PRODUCT_SEARCH: muốn tìm/gợi ý/mua sản phẩm.
-                - PRODUCT_DETAIL: hỏi về sản phẩm cụ thể, hỏi tiếp bằng "đó", hỏi size/màu/giá/chất liệu/tồn kho/mô tả.
-
-                Quy tắc quan trọng:
-                - Nếu khách nói "áo đó", "sản phẩm đó", "cái đó", hãy dùng lịch sử để hiểu đang nói tới sản phẩm trước.
-                - Nếu khách nhập sai chính tả nhẹ, hãy sửa trong correctedMessage và queryCandidates.
-                - queryCandidates phải là các cụm tìm kiếm ngắn, tự nhiên, có cả cụm cụ thể và cụm rộng hơn.
-                  Ví dụ "tôi cần tìm 1 chiếc áo màu đỏ" -> ["áo màu đỏ", "áo", "quần áo"]
-                  Ví dụ "áo bóng đá englend 2026 stadium away" -> ["áo bóng đá england 2026 stadium away", "england stadium away", "áo bóng đá england", "áo"]
-                - Nếu cần dữ liệu sản phẩm, needsProductData=true.
-                - Nếu chỉ chào hỏi/cảm ơn, needsProductData=false.
-
-                JSON schema:
-                {
-                  "intent": "GENERAL_CHAT|SHOP_HELP|PRODUCT_SEARCH|PRODUCT_DETAIL",
-                  "correctedMessage": "câu khách đã được hiểu/sửa lỗi chính tả",
-                  "needsProductData": true,
-                  "queryCandidates": ["cụm tìm kiếm 1", "cụm tìm kiếm 2"],
-                  "referencedProductIds": [110],
-                  "answerGoal": "khách đang muốn biết điều gì ở câu mới nhất",
-                  "shouldAskClarifyingQuestion": false
-                }
-
-                Lịch sử hội thoại:
-                %s
-
-                Câu hỏi mới nhất:
-                %s
-                """.formatted(historyText(history), userMessage);
-
-            Map<String, Object> payload = Map.of(
-                    "contents", List.of(Map.of(
-                            "role", "user",
-                            "parts", List.of(Map.of("text", prompt))
-                    )),
+            Map<String, Object> body = Map.of(
+                    "contents", List.of(
+                            Map.of(
+                                    "role", "user",
+                                    "parts", List.of(Map.of("text", prompt))
+                            )
+                    ),
                     "generationConfig", Map.of(
-                            "temperature", 0.15,
-                            "topP", 0.85,
+                            "temperature", 0.45,
+                            "topP", 0.9,
                             "maxOutputTokens", 700
                     )
             );
 
-            JsonNode response = postGemini(payload);
-            String text = response.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
-            JsonNode json = objectMapper.readTree(extractJson(text));
+            Map<String, Object> response = restClient.post()
+                    .uri(uri)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
-            AiPlan plan = new AiPlan();
-            plan.intent = json.path("intent").asText("PRODUCT_SEARCH");
-            plan.correctedMessage = json.path("correctedMessage").asText(userMessage);
-            plan.needsProductData = json.path("needsProductData").asBoolean(needsProductDataByIntent(plan.intent));
-            plan.answerGoal = json.path("answerGoal").asText("");
-            plan.shouldAskClarifyingQuestion = json.path("shouldAskClarifyingQuestion").asBoolean(false);
-
-            JsonNode queryArray = json.path("queryCandidates");
-            if (queryArray.isArray()) {
-                for (JsonNode item : queryArray) {
-                    String value = item.asText("").trim();
-                    if (StringUtils.hasText(value)) {
-                        plan.queryCandidates.add(value);
-                    }
-                }
-            }
-
-            JsonNode idArray = json.path("referencedProductIds");
-            if (idArray.isArray()) {
-                for (JsonNode item : idArray) {
-                    if (item.canConvertToLong()) {
-                        plan.referencedProductIds.add(item.asLong());
-                    }
-                }
-            }
-
-            plan.referencedProductIds.addAll(extractProductIds(historyText(history) + "\n" + userMessage));
-
-            if (plan.needsProductData && plan.queryCandidates.isEmpty() && StringUtils.hasText(userMessage)) {
-                plan.queryCandidates.add(userMessage);
-            }
-
-            plan.queryCandidates = dedupeStrings(plan.queryCandidates).stream()
-                    .limit(6)
-                    .collect(Collectors.toCollection(ArrayList::new));
-            plan.referencedProductIds = plan.referencedProductIds.stream()
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .limit(5)
-                    .collect(Collectors.toCollection(ArrayList::new));
-
-            return plan;
-        } catch (Exception ex) {
-            log.warn("Gemini plan step failed, using fallback plan. Message: {}", ex.getMessage());
-            return fallbackPlan(userMessage, history);
-        }
-    }
-
-    private AiPlan fallbackPlan(String userMessage, List<AiChatMessage> history) {
-        AiPlan plan = new AiPlan();
-        plan.intent = "PRODUCT_SEARCH";
-        plan.correctedMessage = userMessage;
-        plan.needsProductData = true;
-        plan.answerGoal = "Trả lời câu hỏi mới nhất của khách dựa trên sản phẩm phù hợp.";
-
-        Set<Long> ids = extractProductIds(historyText(history) + "\n" + userMessage);
-        plan.referencedProductIds.addAll(ids);
-
-        if (StringUtils.hasText(userMessage)) {
-            plan.queryCandidates.add(userMessage);
-
-            String normalized = normalize(userMessage);
-            if (normalized.contains("ao")) {
-                plan.queryCandidates.add("áo");
-            }
-            if (normalized.contains("giay")) {
-                plan.queryCandidates.add("giày");
-            }
-            if (normalized.contains("quan")) {
-                plan.queryCandidates.add("quần");
-            }
-        }
-
-        plan.queryCandidates = dedupeStrings(plan.queryCandidates).stream()
-                .limit(5)
-                .collect(Collectors.toCollection(ArrayList::new));
-
-        return plan;
-    }
-
-    private List<CandidateProduct> collectProductContext(AiPlan plan, String userMessage, List<AiChatMessage> history) {
-        LinkedHashMap<Long, ProductResponse> productMap = new LinkedHashMap<>();
-
-        for (Long id : plan.referencedProductIds) {
-            ProductDetailResponse detail = safeGetProductDetail(id);
-            if (detail != null) {
-                productMap.putIfAbsent(id, toProductResponse(detail));
-            }
-        }
-
-        for (String query : plan.queryCandidates) {
-            searchProducts(query, productMap);
-        }
-
-        if (productMap.isEmpty()) {
-            for (String query : createBroadQueries(userMessage)) {
-                searchProducts(query, productMap);
-            }
-        }
-
-        if (productMap.isEmpty()) {
-            ProductSearchRequest fallbackRequest = new ProductSearchRequest();
-            fallbackRequest.setPage(0);
-            fallbackRequest.setSize(FALLBACK_CATALOG_SIZE);
-            fallbackRequest.setSort("newest");
-            safeProducts(productService.getAllProducts(fallbackRequest)).forEach(product -> {
-                if (product.getId() != null) {
-                    productMap.putIfAbsent(product.getId(), product);
-                }
-            });
-        }
-
-        List<CandidateProduct> result = new ArrayList<>();
-        int detailCount = 0;
-
-        for (ProductResponse product : productMap.values()) {
-            ProductDetailResponse detail = null;
-
-            if (product.getId() != null && detailCount < MAX_DETAIL_PRODUCTS) {
-                detail = safeGetProductDetail(product.getId());
-                detailCount++;
-            }
-
-            result.add(new CandidateProduct(product, detail));
-        }
-
-        return result.stream()
-                .limit(MAX_DETAIL_PRODUCTS)
-                .collect(Collectors.toList());
-    }
-
-    private void searchProducts(String keyword, LinkedHashMap<Long, ProductResponse> productMap) {
-        if (!StringUtils.hasText(keyword)) {
-            return;
-        }
-
-        ProductSearchRequest request = new ProductSearchRequest();
-        request.setKeyword(keyword.trim());
-        request.setPage(0);
-        request.setSize(SEARCH_SIZE_PER_QUERY);
-        request.setSort("newest");
-
-        safeProducts(productService.getAllProducts(request)).forEach(product -> {
-            if (product.getId() != null) {
-                productMap.putIfAbsent(product.getId(), product);
-            }
-        });
-    }
-
-    private String createNaturalAnswer(String userMessage,
-                                       List<AiChatMessage> history,
-                                       AiPlan plan,
-                                       List<CandidateProduct> candidates) throws Exception {
-        String prompt = """
-                Bạn là trợ lý AI bán hàng của Sportwear Shop.
-                Hãy trả lời như một nhân viên tư vấn thật: tự nhiên, có ngữ cảnh, không máy móc, không lặp lại câu trả lời cũ.
-
-                Nguyên tắc bắt buộc:
-                1. Chỉ dùng dữ liệu sản phẩm được cung cấp. Không bịa tên, giá, size, màu, tồn kho.
-                2. Trả lời ĐÚNG câu hỏi mới nhất, không trả lại toàn bộ mô tả nếu khách chỉ hỏi size/màu/giá/tồn kho.
-                3. Nếu khách hỏi tiếp bằng "đó/cái đó/sản phẩm đó", hãy dựa vào lịch sử và sản phẩm có ID trong lịch sử.
-                4. Nếu khách muốn tìm sản phẩm theo điều kiện, hãy gợi ý sản phẩm phù hợp nhất; nếu không thấy đúng điều kiện, nói thật và hỏi thêm 1 câu ngắn.
-                5. Nếu dữ liệu không đủ, hãy hỏi lại tự nhiên, không tự thêm luật cứng.
-                6. Không nhắc tới database, backend, JSON, Gemini hay prompt.
-                7. Viết tiếng Việt thân thiện, vừa đủ. Đừng quá dài.
-
-                Lịch sử hội thoại:
-                %s
-
-                Câu hỏi mới nhất:
-                %s
-
-                Cách hệ thống hiểu câu hỏi:
-                - intent: %s
-                - correctedMessage: %s
-                - answerGoal: %s
-                - queryCandidates: %s
-
-                Dữ liệu sản phẩm khả dụng:
-                %s
-
-                Cách trả lời:
-                - Nếu intent GENERAL_CHAT: trả lời ngắn và gợi mở hỗ trợ.
-                - Nếu intent SHOP_HELP: trả lời theo vai trò shop; nếu không có chính sách cụ thể thì nói ở mức chung, không bịa cam kết.
-                - Nếu intent PRODUCT_DETAIL: trả lời đúng chi tiết khách hỏi. Ví dụ hỏi "có size nào" thì chỉ liệt kê size/tồn kho ngắn gọn.
-                - Nếu intent PRODUCT_SEARCH: gợi ý 2-4 sản phẩm hợp nhất trong dữ liệu, kèm lý do ngắn.
-                - Khi nhắc sản phẩm cụ thể, nếu có ID hãy thêm dòng "Xem chi tiết: /products/{id}".
-                """.formatted(
-                historyText(history),
-                userMessage,
-                plan.intent,
-                plan.correctedMessage,
-                plan.answerGoal,
-                plan.queryCandidates,
-                productContextText(candidates)
-        );
-
-        Map<String, Object> payload = Map.of(
-                "contents", List.of(Map.of(
-                        "role", "user",
-                        "parts", List.of(Map.of("text", prompt))
-                )),
-                "generationConfig", Map.of(
-                        "temperature", 0.85,
-                        "topP", 0.95,
-                        "maxOutputTokens", 1000
-                )
-        );
-
-        JsonNode response = postGemini(payload);
-        return response.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("").trim();
-    }
-
-    private List<AiProductSuggestion> buildSuggestions(String reply, List<CandidateProduct> candidates, AiPlan plan) {
-        if (!plan.needsProductData || candidates.isEmpty()) {
-            return List.of();
-        }
-
-        Set<Long> idsInReply = extractProductIds(reply);
-        List<CandidateProduct> selected = new ArrayList<>();
-
-        if (!idsInReply.isEmpty()) {
-            for (CandidateProduct candidate : candidates) {
-                Long id = candidate.id();
-                if (id != null && idsInReply.contains(id)) {
-                    selected.add(candidate);
-                }
-            }
-        }
-
-        if (selected.isEmpty()) {
-            selected.addAll(candidates.stream().limit(MAX_SUGGESTIONS).toList());
-        }
-
-        return selected.stream()
-                .limit(MAX_SUGGESTIONS)
-                .map(this::toSuggestion)
-                .collect(Collectors.toList());
-    }
-
-    private AiProductSuggestion toSuggestion(CandidateProduct candidate) {
-        ProductResponse product = candidate.summary();
-        ProductDetailResponse detail = candidate.detail();
-
-        AiProductSuggestion suggestion = new AiProductSuggestion();
-        suggestion.setId(candidate.id());
-        suggestion.setName(detail != null ? detail.getName() : product.getName());
-        suggestion.setBrandName(detail != null ? detail.getBrandName() : product.getBrandName());
-        suggestion.setCategoryName(detail != null ? detail.getCategoryName() : product.getCategoryName());
-        suggestion.setSportName(detail != null ? detail.getSportName() : product.getSportName());
-        suggestion.setGender(detail != null ? detail.getGender() : product.getGender());
-        suggestion.setThumbnailUrl(detail != null ? detail.getThumbnailUrl() : product.getThumbnailUrl());
-        suggestion.setProductUrl(candidate.id() == null ? null : "/products/" + candidate.id());
-        suggestion.setPriceLabel(detail != null ? detailPriceLabel(detail) : productPriceLabel(product));
-        suggestion.setReason("Phù hợp với nội dung bạn đang trao đổi");
-        return suggestion;
-    }
-
-    private String productContextText(List<CandidateProduct> candidates) {
-        if (candidates.isEmpty()) {
-            return "Không có sản phẩm phù hợp được tìm thấy.";
-        }
-
-        return candidates.stream()
-                .map(candidate -> {
-                    if (candidate.detail() != null) {
-                        return detailContext(candidate.detail());
-                    }
-
-                    return summaryContext(candidate.summary());
-                })
-                .collect(Collectors.joining("\n---\n"));
-    }
-
-    private String summaryContext(ProductResponse product) {
-        return """
-                ID: %s
-                Tên: %s
-                Slug: %s
-                Danh mục: %s
-                Thương hiệu: %s
-                Môn thể thao: %s
-                Giới tính: %s
-                Chất liệu: %s
-                Giá: %s
-                Mô tả ngắn: %s
-                Link: /products/%s
-                """.formatted(
-                product.getId(),
-                safe(product.getName()),
-                safe(product.getSlug()),
-                safe(product.getCategoryName()),
-                safe(product.getBrandName()),
-                safe(product.getSportName()),
-                safe(product.getGender()),
-                safe(product.getMaterial()),
-                productPriceLabel(product),
-                safe(product.getDescription()),
-                product.getId()
-        );
-    }
-
-    private String detailContext(ProductDetailResponse detail) {
-        String variants = "Không có dữ liệu biến thể.";
-
-        if (detail.getVariants() != null && !detail.getVariants().isEmpty()) {
-            variants = detail.getVariants().stream()
-                    .limit(12)
-                    .map(this::variantContext)
-                    .collect(Collectors.joining("\n"));
-        }
-
-        return """
-                ID: %s
-                Tên: %s
-                Slug: %s
-                Danh mục: %s
-                Thương hiệu: %s
-                Môn thể thao: %s
-                Giới tính: %s
-                Chất liệu: %s
-                Giá: %s
-                Mô tả: %s
-                Biến thể:
-                %s
-                Link: /products/%s
-                """.formatted(
-                detail.getId(),
-                safe(detail.getName()),
-                safe(detail.getSlug()),
-                safe(detail.getCategoryName()),
-                safe(detail.getBrandName()),
-                safe(detail.getSportName()),
-                safe(detail.getGender()),
-                safe(detail.getMaterial()),
-                detailPriceLabel(detail),
-                safe(detail.getDescription()),
-                variants,
-                detail.getId()
-        );
-    }
-
-    private String variantContext(ProductVariantResponse variant) {
-        List<String> parts = new ArrayList<>();
-
-        if (StringUtils.hasText(variant.getSize())) {
-            parts.add("size " + variant.getSize());
-        }
-
-        if (StringUtils.hasText(variant.getColor())) {
-            parts.add("màu " + variant.getColor());
-        }
-
-        Double price = variant.getFinalPrice() != null ? variant.getFinalPrice() : variant.getPrice();
-        if (price != null) {
-            parts.add("giá " + formatCurrency(price));
-        }
-
-        if (variant.getStockQuantity() != null) {
-            parts.add("còn " + variant.getStockQuantity());
-        }
-
-        if (Boolean.TRUE.equals(variant.getOnPromotion()) && variant.getDiscountPercent() != null) {
-            parts.add("giảm " + variant.getDiscountPercent() + "%");
-        }
-
-        return "- " + String.join(", ", parts);
-    }
-
-    private JsonNode postGemini(Map<String, Object> payload) throws Exception {
-        String endpoint = geminiBaseUrl.replaceAll("/$", "")
-                + "/" + geminiModel
-                + ":generateContent?key=" + geminiApiKey;
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint))
-                .timeout(Duration.ofSeconds(40))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("Gemini API error " + response.statusCode() + ": " + response.body());
-        }
-
-        return objectMapper.readTree(response.body());
-    }
-
-    private ProductDetailResponse safeGetProductDetail(Long id) {
-        if (id == null) {
-            return null;
-        }
-
-        try {
-            return productService.getProductById(id);
-        } catch (Exception ignored) {
+            return extractGeminiText(response);
+        } catch (Exception exception) {
+            log.warn("Gemini answer request failed, fallback to local answer.", exception);
             return null;
         }
     }
 
-    private List<ProductResponse> safeProducts(ProductPageResponse page) {
-        if (page == null || page.getContent() == null) {
-            return List.of();
+    private String extractGeminiText(Map<String, Object> response) {
+        if (response == null) {
+            return null;
         }
 
-        return page.getContent();
+        Object candidatesObject = response.get("candidates");
+        if (!(candidatesObject instanceof List<?> candidates) || candidates.isEmpty()) {
+            return null;
+        }
+
+        Object firstCandidate = candidates.get(0);
+        if (!(firstCandidate instanceof Map<?, ?> candidateMap)) {
+            return null;
+        }
+
+        Object contentObject = candidateMap.get("content");
+        if (!(contentObject instanceof Map<?, ?> contentMap)) {
+            return null;
+        }
+
+        Object partsObject = contentMap.get("parts");
+        if (!(partsObject instanceof List<?> parts) || parts.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (Object part : parts) {
+            if (part instanceof Map<?, ?> partMap) {
+                Object textObject = partMap.get("text");
+                if (textObject instanceof String text && AiTextNormalizer.hasText(text)) {
+                    builder.append(text.trim()).append("\n");
+                }
+            }
+        }
+
+        String text = builder.toString().trim();
+        return AiTextNormalizer.hasText(text) ? text : null;
     }
 
-    private ProductResponse toProductResponse(ProductDetailResponse detail) {
-        ProductResponse product = new ProductResponse();
-        product.setId(detail.getId());
-        product.setName(detail.getName());
-        product.setSlug(detail.getSlug());
-        product.setDescription(detail.getDescription());
-        product.setCategoryName(detail.getCategoryName());
-        product.setBrandName(detail.getBrandName());
-        product.setSportName(detail.getSportName());
-        product.setGender(detail.getGender());
-        product.setMaterial(detail.getMaterial());
-        product.setThumbnailUrl(detail.getThumbnailUrl());
-        product.setIsActive(detail.getIsActive());
-        return product;
-    }
+    private String buildSmartLocalReply(String message, ProductAiSearchDebugResponse searchResult) {
+        String normalized = AiTextNormalizer.normalize(message);
 
-    private String productPriceLabel(ProductResponse product) {
-        Double min = product.getSaleMinPrice() != null ? product.getSaleMinPrice() : product.getMinPrice();
-        Double max = product.getSaleMaxPrice() != null ? product.getSaleMaxPrice() : product.getMaxPrice();
-
-        if (min == null && max == null) {
-            return "Liên hệ";
+        if (!searchResult.intent().shouldSearchProducts()) {
+            return buildNonProductReply(normalized);
         }
 
-        if (max == null || Objects.equals(min, max)) {
-            return formatCurrency(min);
+        if (searchResult.results().isEmpty()) {
+            return "Mình chưa tìm thấy sản phẩm đủ khớp với yêu cầu này. Bạn cho mình biết rõ hơn loại sản phẩm, môn thể thao, brand hoặc ngân sách để mình lọc chính xác hơn nhé.";
         }
 
-        return formatCurrency(min) + " - " + formatCurrency(max);
-    }
-
-    private String detailPriceLabel(ProductDetailResponse detail) {
-        if (detail.getVariants() == null || detail.getVariants().isEmpty()) {
-            return "Liên hệ";
-        }
-
-        List<Double> prices = detail.getVariants().stream()
-                .map(variant -> variant.getFinalPrice() != null ? variant.getFinalPrice() : variant.getPrice())
-                .filter(Objects::nonNull)
-                .sorted()
+        List<ProductAiSearchCandidateResponse> topProducts = searchResult.results().stream()
+                .limit(3)
                 .toList();
 
-        if (prices.isEmpty()) {
-            return "Liên hệ";
+        StringBuilder builder = new StringBuilder();
+        builder.append("Mình tìm được vài lựa chọn phù hợp nhất cho bạn:\n");
+
+        for (int index = 0; index < topProducts.size(); index++) {
+            ProductAiSearchCandidateResponse candidate = topProducts.get(index);
+            builder.append(index + 1)
+                    .append(". ")
+                    .append(candidate.name());
+
+            if (AiTextNormalizer.hasText(candidate.priceLabel())) {
+                builder.append(" — ").append(candidate.priceLabel());
+            }
+
+            builder.append(". ");
+
+            if (AiTextNormalizer.hasText(candidate.reason())) {
+                builder.append(candidate.reason()).append(". ");
+            }
+
+            if (AiTextNormalizer.hasText(candidate.sizes())) {
+                builder.append("Size hiện có: ").append(candidate.sizes()).append(". ");
+            }
+
+            if (AiTextNormalizer.hasText(candidate.colors())) {
+                builder.append("Màu: ").append(candidate.colors()).append(". ");
+            }
+
+            builder.append("\n");
         }
 
-        Double min = prices.get(0);
-        Double max = prices.get(prices.size() - 1);
-
-        if (Objects.equals(min, max)) {
-            return formatCurrency(min);
-        }
-
-        return formatCurrency(min) + " - " + formatCurrency(max);
+        builder.append("Bạn có thể hỏi tiếp kiểu: \"mẫu đầu tiên còn size 42 không?\", \"đôi đó có màu gì?\" hoặc \"so sánh 2 mẫu đầu cho mình\".");
+        return builder.toString().trim();
     }
 
-    private String formatCurrency(Double value) {
-        if (value == null) {
-            return "0 đ";
+    private String buildNonProductReply(String normalized) {
+        if (normalized.contains("chao") || normalized.contains("hello") || normalized.contains("hi")) {
+            return "Chào bạn, mình là Sportwear AI. Mình có thể tư vấn giày, áo, quần, phụ kiện thể thao theo môn tập, ngân sách, size, màu hoặc thương hiệu bạn thích.";
         }
 
-        return NumberFormat.getInstance(new Locale("vi", "VN")).format(value.longValue()) + " đ";
+        if (normalized.contains("size") || normalized.contains("sz") || normalized.contains("chon size") || normalized.contains("mac size") || normalized.contains("kich co")) {
+            return "Bạn đang hỏi size của sản phẩm nào? Nếu là mẫu mình vừa gợi ý, bạn có thể hỏi như: \"mẫu đầu tiên còn size 42 không?\" để mình kiểm tra chính xác.";
+        }
+
+        if (normalized.contains("thanh toan") || normalized.contains("payment") || normalized.contains("qr")) {
+            return "Bạn có thể xem các phương thức thanh toán ở bước checkout. Nếu thanh toán QR lỗi, bạn thử kiểm tra lại đơn hoặc tạo lại mã thanh toán nhé.";
+        }
+
+        if (normalized.contains("giao hang") || normalized.contains("ship")) {
+            return "Thời gian giao hàng phụ thuộc địa chỉ nhận và đơn vị vận chuyển. Sau khi đặt hàng, bạn có thể theo dõi trong mục Đơn hàng.";
+        }
+
+        if (normalized.contains("doi tra") || normalized.contains("bao hanh")) {
+            return "Về đổi trả hoặc bảo hành, bạn nên kiểm tra chính sách hiển thị trong trang shop hoặc liên hệ shop kèm mã đơn để được xử lý chính xác.";
+        }
+
+        return "Mình có thể hỗ trợ bạn chọn sản phẩm, tư vấn size, gợi ý đồ theo ngân sách hoặc hướng dẫn đặt hàng. Bạn muốn mình hỗ trợ phần nào?";
     }
 
-    private List<AiChatMessage> safeHistory(List<AiChatMessage> history) {
+    private String buildHistoryText(List<AiChatMessageDto> history) {
         if (history == null || history.isEmpty()) {
-            return List.of();
+            return "(chưa có)";
         }
 
-        int limit = Math.max(0, Math.min(maxHistory, 12));
-
+        int safeMaxHistory = Math.max(1, maxHistory);
         return history.stream()
-                .filter(item -> item != null && StringUtils.hasText(item.getContent()))
-                .skip(Math.max(0, history.size() - limit))
-                .collect(Collectors.toList());
-    }
-
-    private String historyText(List<AiChatMessage> history) {
-        if (history == null || history.isEmpty()) {
-            return "Không có.";
-        }
-
-        return history.stream()
-                .map(item -> safe(item.getRole()) + ": " + safe(item.getContent()))
+                .filter(item -> item != null && AiTextNormalizer.hasText(item.content()))
+                .skip(Math.max(0, history.size() - safeMaxHistory))
+                .map(item -> {
+                    String role = "user".equalsIgnoreCase(item.role()) ? "Khách" : "AI";
+                    return role + ": " + sanitize(item.content());
+                })
                 .collect(Collectors.joining("\n"));
     }
 
-    private boolean needsProductDataByIntent(String intent) {
-        return "PRODUCT_SEARCH".equals(intent) || "PRODUCT_DETAIL".equals(intent);
-    }
-
-    private List<String> createBroadQueries(String message) {
-        String normalized = normalize(message);
-        LinkedHashSet<String> queries = new LinkedHashSet<>();
-
-        if (normalized.contains("ao")) {
-            queries.add("áo");
-        }
-
-        if (normalized.contains("giay")) {
-            queries.add("giày");
-        }
-
-        if (normalized.contains("quan")) {
-            queries.add("quần");
-        }
-
-        if (normalized.contains("balo") || normalized.contains("phu kien")) {
-            queries.add("phụ kiện");
-        }
-
-        if (queries.isEmpty() && StringUtils.hasText(message)) {
-            queries.add(message);
-        }
-
-        return new ArrayList<>(queries);
-    }
-
-    private Set<Long> extractProductIds(String text) {
-        if (!StringUtils.hasText(text)) {
-            return Set.of();
-        }
-
-        Set<Long> ids = new LinkedHashSet<>();
-        Pattern pattern = Pattern.compile("(?:/products/|PRODUCT_ID:\\s*|ID\\s*)(\\d+)", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(text);
-
-        while (matcher.find()) {
-            try {
-                ids.add(Long.parseLong(matcher.group(1)));
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        return ids;
-    }
-
-    private String extractJson(String rawText) {
-        String text = rawText == null ? "" : rawText.trim();
-
-        if (text.startsWith("```")) {
-            text = text.replaceFirst("^```json", "")
-                    .replaceFirst("^```", "")
-                    .replaceFirst("```$", "")
-                    .trim();
-        }
-
-        int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-
-        if (start >= 0 && end > start) {
-            return text.substring(start, end + 1);
-        }
-
-        return text;
-    }
-
-    private List<String> dedupeStrings(List<String> values) {
-        return values.stream()
-                .filter(StringUtils::hasText)
-                .map(String::trim)
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toCollection(LinkedHashSet::new),
-                        ArrayList::new
-                ));
-    }
-
-    private String normalize(String value) {
-        if (!StringUtils.hasText(value)) {
+    private String sanitize(String value) {
+        if (value == null) {
             return "";
         }
 
-        return Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replace("đ", "d")
-                .replace("Đ", "d")
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", " ")
+        return value
+                .replaceAll("[\\u0000-\\u001F]", " ")
+                .replaceAll("\\s+", " ")
                 .trim();
-    }
-
-    private String safe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private static class AiPlan {
-        private String intent = "GENERAL_CHAT";
-        private String correctedMessage = "";
-        private boolean needsProductData = false;
-        private List<String> queryCandidates = new ArrayList<>();
-        private List<Long> referencedProductIds = new ArrayList<>();
-        private String answerGoal = "";
-        private boolean shouldAskClarifyingQuestion = false;
-    }
-
-    private record CandidateProduct(ProductResponse summary, ProductDetailResponse detail) {
-        private Long id() {
-            if (detail != null) {
-                return detail.getId();
-            }
-
-            return summary == null ? null : summary.getId();
-        }
     }
 }

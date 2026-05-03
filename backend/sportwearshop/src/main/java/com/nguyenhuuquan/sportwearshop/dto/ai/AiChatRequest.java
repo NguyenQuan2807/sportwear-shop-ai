@@ -3,21 +3,28 @@ package com.nguyenhuuquan.sportwearshop.dto.ai;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
 
-import java.util.ArrayList;
 import java.util.List;
 
-@Getter
-@Setter
-public class AiChatRequest {
+public record AiChatRequest(
+        Long conversationId,
 
-    @NotBlank(message = "Tin nhắn không được để trống")
-    @Size(max = 2000, message = "Tin nhắn tối đa 2000 ký tự")
-    private String message;
+        /*
+         * sessionId không bắt buộc.
+         * Nếu frontend chưa đăng nhập user, có thể tạo 1 UUID ở localStorage rồi gửi lên để backend
+         * tìm lại conversation gần nhất của phiên chat đó.
+         */
+        String sessionId,
 
-    @Valid
-    @Size(max = 10)
-    private List<AiChatMessage> history = new ArrayList<>();
+        @NotBlank(message = "Message is required")
+        @Size(max = 1000, message = "Message must be less than 1000 characters")
+        String message,
+
+        /*
+         * Giữ lại history để tương thích với frontend cũ.
+         * Nếu conversationId có dữ liệu trong database, backend sẽ ưu tiên history từ database.
+         */
+        @Valid
+        List<AiChatMessageDto> history
+) {
 }

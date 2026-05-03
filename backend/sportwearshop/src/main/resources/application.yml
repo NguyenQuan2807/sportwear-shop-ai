@@ -9,7 +9,6 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
@@ -22,7 +21,7 @@ spring:
 
   sql:
     init:
-      mode: always
+      mode: never
 
   mail:
     host: smtp.gmail.com
@@ -64,9 +63,10 @@ app:
 
   ai:
     enabled: true
-    max-history: 6
+    max-history: 8
+    answer-with-gemini: true
     gemini:
-      api-key: ${GEMINI_API_KEY:}
-      model: gemini-2.0-flash-lite
+      api-key: "AIzaSyD2RcInl-kgQRBTK7GNaeNvLJIa-vApVs4"
+      model: gemini-2.5-flash
       url: https://generativelanguage.googleapis.com/v1beta/models
 

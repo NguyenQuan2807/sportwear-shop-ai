@@ -2,8 +2,7 @@ package com.nguyenhuuquan.sportwearshop.dto.ai;
 
 import java.util.List;
 
-public record AiChatResponse(
-        Long conversationId,
+public record ProductFactAnswer(
         String reply,
         List<AiProductSuggestionResponse> suggestions
 ) {

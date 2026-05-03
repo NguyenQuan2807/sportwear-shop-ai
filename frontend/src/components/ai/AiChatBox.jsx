@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { sendAiChatMessage } from "../../services/aiChatService";
 import { resolveImageUrl } from "../../utils/resolveImageUrl";
 
+const AI_CONVERSATION_ID_KEY = "sportwearAiConversationId";
+const AI_SESSION_ID_KEY = "sportwearAiSessionId";
+
 const initialMessages = [
   {
     role: "assistant",
@@ -20,15 +23,73 @@ const toApiHistory = (messages) =>
       content: item.content,
     }));
 
+const createSessionId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `sportwear-ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const readConversationId = () => {
+  const saved = localStorage.getItem(AI_CONVERSATION_ID_KEY);
+
+  if (!saved) {
+    return null;
+  }
+
+  const value = Number(saved);
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const readSessionId = () => {
+  let saved = localStorage.getItem(AI_SESSION_ID_KEY);
+
+  if (!saved) {
+    saved = createSessionId();
+    localStorage.setItem(AI_SESSION_ID_KEY, saved);
+  }
+
+  return saved;
+};
+
 const AiChatBox = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [conversationId, setConversationId] = useState(readConversationId);
+  const [sessionId] = useState(readSessionId);
+
   const inputRef = useRef(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+
+  const saveConversationId = (value) => {
+    if (!value) {
+      return;
+    }
+
+    const nextConversationId = Number(value);
+
+    if (!Number.isFinite(nextConversationId) || nextConversationId <= 0) {
+      return;
+    }
+
+    setConversationId(nextConversationId);
+    localStorage.setItem(AI_CONVERSATION_ID_KEY, String(nextConversationId));
+  };
+
+  const resetConversation = () => {
+    localStorage.removeItem(AI_CONVERSATION_ID_KEY);
+    localStorage.removeItem(AI_SESSION_ID_KEY);
+
+    setConversationId(null);
+    setMessages(initialMessages);
+    setSuggestions([]);
+  };
 
   const handleSend = async (event) => {
     event?.preventDefault();
@@ -45,9 +106,13 @@ const AiChatBox = () => {
 
     try {
       const data = await sendAiChatMessage({
+        conversationId,
+        sessionId,
         message: text,
         history: toApiHistory(messages),
       });
+
+      saveConversationId(data?.conversationId);
 
       setMessages([
         ...nextMessages,
@@ -82,13 +147,25 @@ const AiChatBox = () => {
               <p className="text-sm font-semibold">Sportwear AI</p>
               <p className="text-xs text-white/70">Tư vấn sản phẩm trực tuyến</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-full px-2 py-1 text-sm hover:bg-white/10"
-            >
-              ✕
-            </button>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={resetConversation}
+                className="rounded-full px-2 py-1 text-xs hover:bg-white/10"
+                title="Tạo cuộc trò chuyện mới"
+              >
+                Mới
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-full px-2 py-1 text-sm hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto bg-neutral-50 p-4">
