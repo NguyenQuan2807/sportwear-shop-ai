@@ -11,6 +11,7 @@ public class AdminProductVariantResponse {
     private String size;
     private String color;
     private Double price;
+    private Double costPrice;
     private Integer stockQuantity;
     private String sku;
 }

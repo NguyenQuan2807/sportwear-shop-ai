@@ -7,6 +7,7 @@ import {
   updateAdminPromotionApi,
 } from "../../services/adminPromotionService";
 import AdminPromotionForm from "../../components/common/AdminPromotionForm";
+import AdminAiPromotionSuggestions from "../../components/admin/AdminAiPromotionSuggestions";
 import {
   AdminAlert,
   AdminButton,
@@ -16,17 +17,22 @@ import {
   adminInputClassName,
   statusPillClassName,
 } from "../../components/admin/AdminShell";
+
 const PAGE_SIZE = 10;
+
 const editBtn =
   "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600 transition hover:-translate-y-0.5 hover:bg-amber-100";
+
 const deleteBtn =
   "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:-translate-y-0.5 hover:bg-rose-100";
+
 const normalizeText = (v) =>
   String(v || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+
 const toneByStatus = (status) =>
   status === "ACTIVE"
     ? "success"
@@ -37,6 +43,7 @@ const toneByStatus = (status) =>
         : status === "DISABLED"
           ? "danger"
           : "neutral";
+
 export default function ManagePromotionsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +54,12 @@ export default function ManagePromotionsPage() {
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
   const fetchItems = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
+
       const res = await getAdminPromotionsApi();
       setItems(res.data || []);
     } catch (e) {
@@ -61,15 +70,19 @@ export default function ManagePromotionsPage() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchItems();
   }, []);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
+
   const filtered = useMemo(() => {
     const k = normalizeText(searchTerm);
     if (!k) return items;
+
     return items.filter((item) =>
       [
         item.id,
@@ -86,15 +99,19 @@ export default function ManagePromotionsPage() {
       ].some((v) => normalizeText(v).includes(k)),
     );
   }, [items, searchTerm]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
   const paginated = useMemo(
     () =>
       filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [filtered, currentPage],
   );
+
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+
   const handleEditClick = async (id) => {
     try {
       const res = await getAdminPromotionDetailApi(id);
@@ -106,8 +123,10 @@ export default function ManagePromotionsPage() {
       );
     }
   };
+
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa chương trình này?")) return;
+
     try {
       await deleteAdminPromotionApi(id);
       setSuccessMessage("Xóa promotion thành công");
@@ -116,9 +135,11 @@ export default function ManagePromotionsPage() {
       setErrorMessage(e?.response?.data?.message || "Không thể xóa promotion");
     }
   };
+
   const handleSubmit = async (formData) => {
     try {
       setSubmitting(true);
+
       if (editingItem) {
         await updateAdminPromotionApi(editingItem.id, formData);
         setSuccessMessage("Cập nhật promotion thành công");
@@ -126,6 +147,7 @@ export default function ManagePromotionsPage() {
         await createAdminPromotionApi(formData);
         setSuccessMessage("Tạo promotion thành công");
       }
+
       setShowForm(false);
       setEditingItem(null);
       fetchItems();
@@ -135,8 +157,10 @@ export default function ManagePromotionsPage() {
       setSubmitting(false);
     }
   };
+
   const start = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const end = Math.min(currentPage * PAGE_SIZE, filtered.length);
+
   return (
     <div className="space-y-5">
       <AdminPageHeader
@@ -154,12 +178,17 @@ export default function ManagePromotionsPage() {
           </AdminButton>
         }
       />
+
       {successMessage ? (
         <AdminAlert type="success">{successMessage}</AdminAlert>
       ) : null}
+
       {errorMessage ? (
         <AdminAlert type="error">{errorMessage}</AdminAlert>
       ) : null}
+
+      <AdminAiPromotionSuggestions />
+
       {showForm ? (
         <AdminCard
           title={editingItem ? "Cập nhật chương trình" : "Tạo chương trình mới"}
@@ -175,6 +204,7 @@ export default function ManagePromotionsPage() {
           />
         </AdminCard>
       ) : null}
+
       <AdminCard>
         <div className="space-y-4">
           <div className="relative">
@@ -188,6 +218,7 @@ export default function ManagePromotionsPage() {
               className={`${adminInputClassName} pl-12`}
             />
           </div>
+
           {loading ? (
             <div className="text-sm text-slate-500">Đang tải promotion...</div>
           ) : filtered.length === 0 ? (
@@ -202,45 +233,27 @@ export default function ManagePromotionsPage() {
                     <thead className="border-b border-slate-200 bg-white text-left text-slate-500">
                       <tr>
                         <th className="w-[20%] px-4 py-3 font-semibold">Tên</th>
-                        <th className="w-[14%] px-4 py-3 font-semibold">
-                          Loại
-                        </th>
-                        <th className="w-[10%] px-4 py-3 font-semibold">
-                          Giảm giá
-                        </th>
-                        <th className="w-[10%] px-4 py-3 font-semibold">
-                          Priority
-                        </th>
-                        <th className="w-[18%] px-4 py-3 font-semibold">
-                          Thời gian
-                        </th>
-                        <th className="w-[12%] px-4 py-3 font-semibold">
-                          Trạng thái
-                        </th>
-                        <th className="w-[8%] px-4 py-3 font-semibold">
-                          Targets
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold">
-                          Thao tác
-                        </th>
+                        <th className="w-[14%] px-4 py-3 font-semibold">Loại</th>
+                        <th className="w-[10%] px-4 py-3 font-semibold">Giảm giá</th>
+                        <th className="w-[10%] px-4 py-3 font-semibold">Priority</th>
+                        <th className="w-[18%] px-4 py-3 font-semibold">Thời gian</th>
+                        <th className="w-[12%] px-4 py-3 font-semibold">Trạng thái</th>
+                        <th className="w-[8%] px-4 py-3 font-semibold">Targets</th>
+                        <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/80 bg-white">
                       {paginated.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/70">
                           <td className="px-4 py-3">
-                            <p className="font-semibold text-slate-900">
-                              {item.name}
-                            </p>
+                            <p className="font-semibold text-slate-900">{item.name}</p>
                             <p className="text-xs text-slate-500">
                               #{item.id} • {item.slug}
                             </p>
                           </td>
                           <td className="px-4 py-3 text-slate-600">
                             <div>{item.promotionType}</div>
-                            <div className="text-xs text-slate-400">
-                              {item.discountType}
-                            </div>
+                            <div className="text-xs text-slate-400">{item.discountType}</div>
                           </td>
                           <td className="px-4 py-3 text-slate-600">
                             {item.discountValue}
@@ -249,17 +262,11 @@ export default function ManagePromotionsPage() {
                             {item.priority}
                           </td>
                           <td className="px-4 py-3 text-slate-500">
-                            <div>
-                              {item.startTime?.replace("T", " ") || "-"}
-                            </div>
+                            <div>{item.startTime?.replace("T", " ") || "-"}</div>
                             <div>{item.endTime?.replace("T", " ") || "-"}</div>
                           </td>
                           <td className="px-4 py-3">
-                            <span
-                              className={statusPillClassName(
-                                toneByStatus(item.status),
-                              )}
-                            >
+                            <span className={statusPillClassName(toneByStatus(item.status))}>
                               {item.status}
                             </span>
                           </td>
@@ -290,6 +297,7 @@ export default function ManagePromotionsPage() {
                   </table>
                 </div>
               </AdminTableShell>
+
               <PaginationBar
                 start={start}
                 end={end}
@@ -305,6 +313,7 @@ export default function ManagePromotionsPage() {
     </div>
   );
 }
+
 function SearchIcon({ className = "h-5 w-5" }) {
   return (
     <svg
@@ -319,6 +328,7 @@ function SearchIcon({ className = "h-5 w-5" }) {
     </svg>
   );
 }
+
 function EditIcon({ className = "h-4 w-4" }) {
   return (
     <svg
@@ -333,6 +343,7 @@ function EditIcon({ className = "h-4 w-4" }) {
     </svg>
   );
 }
+
 function TrashIcon({ className = "h-4 w-4" }) {
   return (
     <svg
@@ -348,6 +359,7 @@ function TrashIcon({ className = "h-4 w-4" }) {
     </svg>
   );
 }
+
 function ChevronLeftIcon({ className = "h-4 w-4" }) {
   return (
     <svg
@@ -361,6 +373,7 @@ function ChevronLeftIcon({ className = "h-4 w-4" }) {
     </svg>
   );
 }
+
 function ChevronRightIcon({ className = "h-4 w-4" }) {
   return (
     <svg
@@ -374,6 +387,7 @@ function ChevronRightIcon({ className = "h-4 w-4" }) {
     </svg>
   );
 }
+
 function PaginationBar({
   start,
   end,
@@ -396,16 +410,22 @@ function PaginationBar({
         >
           <ChevronLeftIcon />
         </button>
+
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
           <button
             key={page}
             type="button"
             onClick={() => onPageChange(page)}
-            className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${currentPage === page ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+            className={`inline-flex h-10 min-w-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition ${
+              currentPage === page
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
           >
             {page}
           </button>
         ))}
+
         <button
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}

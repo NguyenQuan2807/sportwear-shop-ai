@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { getAdminOrdersApi } from "../services/adminOrderService";
+import { formatCurrency } from "../utils/formatCurrency";
 
 const SIDEBAR_KEY = "admin_sidebar_expanded";
 
@@ -25,16 +27,37 @@ const menuGroups = [
   },
 ];
 
+const STATUS_LABELS = {
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  SHIPPING: "Đang giao",
+  DELIVERED: "Đã giao",
+  COMPLETED: "Hoàn thành",
+  CANCELLED: "Đã hủy",
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleString("vi-VN");
+};
+
 const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  const notificationRef = useRef(null);
 
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     const storedValue = localStorage.getItem(SIDEBAR_KEY);
     return storedValue == null ? true : storedValue === "true";
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState([]);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_KEY, String(sidebarExpanded));
@@ -42,6 +65,47 @@ const AdminLayout = () => {
 
   useEffect(() => {
     setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchPendingOrders = async () => {
+    try {
+      setNotificationLoading(true);
+      const response = await getAdminOrdersApi();
+      const pending = (response.data || [])
+        .filter((order) => order.status === "PENDING")
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime() || 0;
+          const dateB = new Date(b.createdAt).getTime() || 0;
+          return dateB - dateA;
+        });
+
+      setPendingOrders(pending);
+    } catch (error) {
+      console.error("Không thể tải thông báo đơn hàng mới", error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingOrders();
+
+    const timer = window.setInterval(fetchPendingOrders, 60000);
+    return () => window.clearInterval(timer);
   }, [location.pathname]);
 
   const pageTitle = useMemo(() => {
@@ -55,6 +119,11 @@ const AdminLayout = () => {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleViewOrders = () => {
+    setNotificationOpen(false);
+    navigate("/admin/orders");
   };
 
   return (
@@ -76,7 +145,7 @@ const AdminLayout = () => {
         <div className={`flex items-center border-b border-slate-200/70 px-5 py-6 ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
-              <LogoIcon className="h-5 w-5"  />
+              <LogoIcon className="h-5 w-5" />
             </div>
             {sidebarExpanded ? (
               <div>
@@ -123,7 +192,7 @@ const AdminLayout = () => {
                         }
                         title={item.label}
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-current group-[.active]:bg-indigo-100">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-current">
                           <Icon className="h-5 w-5" />
                         </span>
                         {sidebarExpanded ? <span className="truncate">{item.label}</span> : null}
@@ -194,7 +263,7 @@ const AdminLayout = () => {
                 <MenuIcon className="h-5 w-5" />
               </button>
 
-              <div> 
+              <div>
                 <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">{pageTitle}</h1>
               </div>
             </div>
@@ -203,6 +272,108 @@ const AdminLayout = () => {
               <div className="hidden min-w-[260px] items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400 lg:flex">
                 <SearchIcon className="h-4 w-4" />
                 <span>Tìm kiếm nhanh trong admin...</span>
+              </div>
+
+              <div ref={notificationRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotificationOpen((prev) => !prev)}
+                  className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                  aria-label="Thông báo đơn hàng mới"
+                  title="Thông báo đơn hàng mới"
+                >
+                  <BellIcon className="h-5 w-5" />
+                  {pendingOrders.length > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[11px] font-bold leading-none text-white">
+                      {pendingOrders.length > 99 ? "99+" : pendingOrders.length}
+                    </span>
+                  ) : null}
+                </button>
+
+                {notificationOpen ? (
+                  <div className="absolute right-0 top-full z-50 mt-3 w-[calc(100vw-32px)] max-w-[420px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl shadow-slate-950/15 sm:w-[420px]">
+                    <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">Thông báo đơn hàng</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {pendingOrders.length > 0
+                            ? `${pendingOrders.length} đơn hàng mới chưa xác nhận`
+                            : "Không có đơn hàng mới cần xác nhận"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchPendingOrders}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                      >
+                        Làm mới
+                      </button>
+                    </div>
+
+                    <div className="max-h-[420px] overflow-y-auto p-3">
+                      {notificationLoading ? (
+                        <div className="px-3 py-8 text-center text-sm text-slate-500">
+                          Đang tải thông báo...
+                        </div>
+                      ) : pendingOrders.length === 0 ? (
+                        <div className="px-3 py-8 text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                            <CheckIcon className="h-6 w-6" />
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-slate-800">
+                            Tất cả đơn hàng đã được xử lý
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Khi có đơn PENDING mới, số thông báo sẽ hiện tại đây.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {pendingOrders.slice(0, 8).map((order) => (
+                            <button
+                              key={order.id}
+                              type="button"
+                              onClick={handleViewOrders}
+                              className="w-full rounded-2xl border border-amber-100 bg-amber-50/60 p-3 text-left transition hover:border-amber-200 hover:bg-amber-50"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-900">
+                                    Đơn #{order.id} cần xác nhận
+                                  </p>
+                                  <p className="mt-1 truncate text-sm text-slate-600">
+                                    {order.receiverName || "Khách hàng"} • {order.receiverPhone || "Chưa có SĐT"}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {formatDateTime(order.createdAt)}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-sm font-bold text-rose-600">
+                                    {formatCurrency(order.totalAmount || 0)}
+                                  </p>
+                                  <span className="mt-1 inline-flex rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                                    {STATUS_LABELS[order.status] || order.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-200 bg-white p-3">
+                      <button
+                        type="button"
+                        onClick={handleViewOrders}
+                        className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        Xem tất cả đơn hàng
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 md:flex">
@@ -351,6 +522,21 @@ function UserCircleIcon({ className = "h-5 w-5" }) {
     <svg {...iconProps(className)}>
       <circle cx="12" cy="8.5" r="3.5" />
       <path d="M5.5 19a6.5 6.5 0 0 1 13 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+function BellIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 21h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CheckIcon({ className = "h-5 w-5" }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="m5 12 4 4L19 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

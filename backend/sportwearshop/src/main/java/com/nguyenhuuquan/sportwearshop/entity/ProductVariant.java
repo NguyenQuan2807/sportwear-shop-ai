@@ -23,6 +23,9 @@ public class ProductVariant extends BaseEntity {
     @Column(nullable = false)
     private Double price;
 
+    @Column(name = "cost_price")
+    private Double costPrice;
+
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
 

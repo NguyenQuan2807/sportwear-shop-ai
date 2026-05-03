@@ -49,6 +49,7 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
         variant.setSize(request.getSize());
         variant.setColor(request.getColor());
         variant.setPrice(request.getPrice());
+        variant.setCostPrice(request.getCostPrice());
         variant.setStockQuantity(request.getStockQuantity());
         variant.setSku(request.getSku());
 
@@ -63,6 +64,7 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
         variant.setSize(request.getSize());
         variant.setColor(request.getColor());
         variant.setPrice(request.getPrice());
+        variant.setCostPrice(request.getCostPrice());
         variant.setStockQuantity(request.getStockQuantity());
         variant.setSku(request.getSku());
 
@@ -84,6 +86,7 @@ public class AdminProductVariantServiceImpl implements AdminProductVariantServic
         response.setSize(variant.getSize());
         response.setColor(variant.getColor());
         response.setPrice(variant.getPrice());
+        response.setCostPrice(variant.getCostPrice());
         response.setStockQuantity(variant.getStockQuantity());
         response.setSku(variant.getSku());
         return response;

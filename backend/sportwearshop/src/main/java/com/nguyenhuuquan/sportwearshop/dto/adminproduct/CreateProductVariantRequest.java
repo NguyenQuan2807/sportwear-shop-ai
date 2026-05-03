@@ -16,9 +16,13 @@ public class CreateProductVariantRequest {
     @NotBlank(message = "Màu không được để trống")
     private String color;
 
-    @NotNull(message = "Giá không được để trống")
-    @Min(value = 0, message = "Giá phải >= 0")
+    @NotNull(message = "Giá bán không được để trống")
+    @Min(value = 0, message = "Giá bán phải >= 0")
     private Double price;
+
+    @NotNull(message = "Giá nhập không được để trống")
+    @Min(value = 0, message = "Giá nhập phải >= 0")
+    private Double costPrice;
 
     @NotNull(message = "Tồn kho không được để trống")
     @Min(value = 0, message = "Tồn kho phải >= 0")
