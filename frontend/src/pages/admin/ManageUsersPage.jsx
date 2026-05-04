@@ -21,6 +21,7 @@ const defaultFilters = { keyword: "", roleName: "", emailVerified: "" };
 const roleOptions = [
   { value: "", label: "Tất cả role" },
   { value: "ADMIN", label: "Admin" },
+  { value: "SALES_STAFF", label: "Nhân viên bán hàng" },
   { value: "USER", label: "User" },
 ];
 const verificationOptions = [
@@ -228,6 +229,7 @@ export default function ManageUsersPage() {
                 className={adminInputClassName}
               >
                 <option value="USER">User</option>
+                <option value="SALES_STAFF">Nhân viên bán hàng</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>
@@ -373,7 +375,9 @@ export default function ManageUsersPage() {
                               className={statusPillClassName(
                                 user.roleName === "ADMIN"
                                   ? "violet"
-                                  : "neutral",
+                                  : user.roleName === "SALES_STAFF"
+                                    ? "info"
+                                    : "neutral",
                               )}
                             >
                               {user.roleName}

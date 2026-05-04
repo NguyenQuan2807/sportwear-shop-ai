@@ -1,9 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
-const ADMIN_PANEL_ROLES = ["ADMIN", "SALES_STAFF"];
-
-const AdminRoute = ({ children }) => {
+const RoleRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -14,11 +12,11 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!ADMIN_PANEL_ROLES.includes(user.roleName)) {
-    return <Navigate to="/" replace />;
+  if (!allowedRoles.includes(user.roleName)) {
+    return <Navigate to="/admin" replace />;
   }
 
   return children;
 };
 
-export default AdminRoute;
+export default RoleRoute;

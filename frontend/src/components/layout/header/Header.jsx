@@ -132,6 +132,8 @@ const Header = () => {
   const orderPath = "/orders";
   const adminPath = "/admin";
   const profilePath = "/profile";
+  const canAccessManagement =
+    user?.roleName === "ADMIN" || user?.roleName === "SALES_STAFF";
 
   const closeMobileSearch = () => setMobileSearchOpen(false);
 
@@ -179,8 +181,8 @@ const Header = () => {
                   <div className="header-utility-dropdown">
                     <Link to={profilePath} className="header-dropdown-link">Tài khoản</Link>
                     <Link to={orderPath} className="header-dropdown-link">Đơn hàng</Link>
-                    {user?.roleName === "ADMIN" ? (
-                    <Link to={adminPath} className="header-dropdown-link">Quản lý</Link>
+                    {canAccessManagement ? (
+                      <Link to={adminPath} className="header-dropdown-link">Quản lý</Link>
                     ) : null}
                     <button type="button" onClick={logout} className="header-dropdown-link header-dropdown-danger w-full text-left">
                       Đăng xuất

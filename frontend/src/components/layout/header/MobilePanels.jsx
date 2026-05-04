@@ -48,6 +48,9 @@ const MobilePanels = ({
 
   if (typeof document === "undefined") return null;
 
+  const canAccessManagement =
+  user?.roleName === "ADMIN" || user?.roleName === "SALES_STAFF";
+
   return createPortal(
     <div
       className={`fixed inset-0 z-[100] lg:hidden ${
@@ -183,7 +186,7 @@ const MobilePanels = ({
                   Orders
                 </Link>
 
-                {user?.roleName === "ADMIN" ? (
+                {canAccessManagement ? (
                   <Link
                     to={adminPath}
                     onClick={closeMobileMenu}

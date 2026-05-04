@@ -24,6 +24,11 @@ import ManageBrandsPage from "./pages/admin/ManageBrandsPage";
 import ManageSportsPage from "./pages/admin/ManageSportsPage";
 import ManagePromotionsPage from "./pages/admin/ManagePromotionsPage";
 import AdminRoute from "./routes/AdminRoute";
+import RoleRoute from "./routes/RoleRoute";
+
+const adminOnly = (page) => (
+  <RoleRoute allowedRoles={["ADMIN"]}>{page}</RoleRoute>
+);
 
 function App() {
   return (
@@ -39,21 +44,24 @@ function App() {
         <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       </Route>
+
       <Route path="/login" element={<AuthEmailEntryPage />} />
       <Route path="/login/password" element={<LoginPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
       <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<ManageProductsPage />} />
         <Route path="orders" element={<ManageOrdersPage />} />
-        <Route path="users" element={<ManageUsersPage />} />
-        <Route path="categories" element={<ManageCategoriesPage />} />
-        <Route path="brands" element={<ManageBrandsPage />} />
-        <Route path="sports" element={<ManageSportsPage />} />
-        <Route path="promotions" element={<ManagePromotionsPage />} />
+        <Route path="users" element={adminOnly(<ManageUsersPage />)} />
+        <Route path="categories" element={adminOnly(<ManageCategoriesPage />)} />
+        <Route path="brands" element={adminOnly(<ManageBrandsPage />)} />
+        <Route path="sports" element={adminOnly(<ManageSportsPage />)} />
+        <Route path="promotions" element={adminOnly(<ManagePromotionsPage />)} />
       </Route>
-      <Route path="*" element={<Navigate to="/" />} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

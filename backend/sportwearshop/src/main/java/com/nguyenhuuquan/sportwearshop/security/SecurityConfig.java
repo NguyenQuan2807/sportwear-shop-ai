@@ -49,6 +49,27 @@ public class SecurityConfig {
                                 "/api/ai/chat",
                                 "/api/payments/qr/webhook/sepay").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ADMIN + SALES_STAFF: các quyền vận hành bán hàng.
+                        // Đặt các matcher này trước /api/admin/** để không bị rule ADMIN-only chặn.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/admin/dashboard",
+                                "/api/admin/ai/dashboard-insight",
+                                "/api/admin/orders/**",
+                                "/api/admin/products/**",
+                                "/api/admin/categories/**",
+                                "/api/admin/brands/**",
+                                "/api/admin/sports/**",
+                                "/api/admin/promotions/**").hasAnyRole("ADMIN", "SALES_STAFF")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/admin/orders/**").hasAnyRole("ADMIN", "SALES_STAFF")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/admin/products",
+                                "/api/admin/uploads/images").hasAnyRole("ADMIN", "SALES_STAFF")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/admin/products/**").hasAnyRole("ADMIN", "SALES_STAFF")
+
+                        // ADMIN-only: quản lý user, role, danh mục, brand, sport, khuyến mãi, xóa dữ liệu.
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

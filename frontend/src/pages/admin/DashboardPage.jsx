@@ -25,7 +25,6 @@ import {
   AdminButton,
   AdminCard,
   AdminFilterLabel,
-  AdminMetricCard,
   AdminPageHeader,
   AdminTableShell,
   adminInputClassName,
@@ -480,32 +479,37 @@ const DashboardPage = () => {
       </AdminCard>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <AdminMetricCard
-          label="Tổng sản phẩm"
-          value={dashboardData.totalProducts}
-          helper="Danh mục sản phẩm đang quản lý"
-          tone="brand"
+        <DashboardMetricCard
+          title="Tổng sản phẩm"
+          value={dashboardData.totalProducts || 0}
+          description="Sản phẩm đang quản lý"
+          badge="Catalog"
+          tone="indigo"
           icon={<PackageIcon className="h-5 w-5" />}
         />
-        <AdminMetricCard
-          label="Đơn hàng trong kỳ"
+        <DashboardMetricCard
+          title="Đơn hàng trong kỳ"
           value={displayTotalOrders}
-          helper="Theo bộ lọc thời gian hiện tại"
+          description="Theo bộ lọc thời gian hiện tại"
+          badge="Orders"
           tone="emerald"
           icon={<OrdersIcon className="h-5 w-5" />}
         />
-        <AdminMetricCard
-          label="Đơn chờ xác nhận"
+        <DashboardMetricCard
+          title="Đơn chờ xác nhận"
           value={pendingOrderCount}
-          helper="Đơn hàng PENDING trong kỳ"
+          description="Đơn hàng PENDING trong kỳ"
+          badge={pendingOrderCount > 0 ? "Cần xử lý" : "Ổn định"}
           tone="violet"
           icon={<BellIcon className="h-5 w-5" />}
         />
-        <AdminMetricCard
-          label="Doanh thu trong kỳ"
+        <DashboardMetricCard
+          title="Doanh thu trong kỳ"
           value={formatCurrency(displayTotalRevenue || 0)}
-          helper="Tổng tiền đơn hàng theo bộ lọc"
+          description="Tổng tiền đơn hàng theo bộ lọc"
+          badge="Revenue"
           tone="amber"
+          valueClassName="text-2xl sm:text-[26px]"
           icon={<RevenueIcon className="h-5 w-5" />}
         />
       </div>
@@ -668,6 +672,86 @@ const DashboardPage = () => {
     </div>
   );
 };
+
+const dashboardMetricToneStyles = {
+  indigo: {
+    card: "border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white shadow-indigo-100/70",
+    icon: "bg-indigo-600 text-white shadow-indigo-200",
+    badge: "bg-indigo-100 text-indigo-700",
+    glow: "bg-indigo-500/10",
+    line: "from-indigo-500 to-blue-500",
+  },
+  emerald: {
+    card: "border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-white shadow-emerald-100/70",
+    icon: "bg-emerald-600 text-white shadow-emerald-200",
+    badge: "bg-emerald-100 text-emerald-700",
+    glow: "bg-emerald-500/10",
+    line: "from-emerald-500 to-teal-500",
+  },
+  violet: {
+    card: "border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white shadow-violet-100/70",
+    icon: "bg-violet-600 text-white shadow-violet-200",
+    badge: "bg-violet-100 text-violet-700",
+    glow: "bg-violet-500/10",
+    line: "from-violet-500 to-fuchsia-500",
+  },
+  amber: {
+    card: "border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white shadow-amber-100/70",
+    icon: "bg-amber-500 text-white shadow-amber-200",
+    badge: "bg-amber-100 text-amber-700",
+    glow: "bg-amber-500/10",
+    line: "from-amber-500 to-orange-500",
+  },
+};
+
+function DashboardMetricCard({
+  title,
+  value,
+  description,
+  badge,
+  tone = "indigo",
+  icon,
+  valueClassName = "text-3xl sm:text-[34px]",
+}) {
+  const styles = dashboardMetricToneStyles[tone] || dashboardMetricToneStyles.indigo;
+
+  return (
+    <article
+      className={`group relative min-h-[172px] overflow-hidden rounded-[30px] border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${styles.card}`}
+    >
+      <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full blur-2xl ${styles.glow}`} />
+      <div className={`absolute -bottom-12 left-6 h-28 w-28 rounded-full blur-2xl ${styles.glow}`} />
+
+      <div className="relative flex h-full flex-col justify-between gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${styles.badge}`}>
+              {badge}
+            </span>
+            <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {title}
+            </p>
+          </div>
+
+          <div
+            className={`flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${styles.icon}`}
+          >
+            {icon}
+          </div>
+        </div>
+
+        <div>
+          <div className={`font-bold leading-none tracking-tight text-slate-950 ${valueClassName}`}>
+            {value}
+          </div>
+          <p className="mt-3 text-sm leading-5 text-slate-500">{description}</p>
+        </div>
+      </div>
+
+      <div className={`absolute inset-x-5 bottom-0 h-1 rounded-t-full bg-gradient-to-r ${styles.line}`} />
+    </article>
+  );
+}
 
 function AiDashboardInsightModal({ open, insight, loading, errorMessage, onRefresh, onClose }) {
   const sourceText = insight?.source === "GEMINI_GROUNDED" ? "Gemini + dữ liệu thật" : "Rule-based scoring";
